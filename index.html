@@ -70,6 +70,17 @@
       }
     });
   }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    checkTakeOff();
+    moveBayraktar();
+    updateMissiles();
+    if (controls) controls.update();
+    if (renderer && scene && camera) renderer.render(scene, camera);
+  }
+
+  animate();
 </script>
 </body>
 </html>
