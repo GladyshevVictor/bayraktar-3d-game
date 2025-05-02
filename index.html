@@ -72,6 +72,7 @@
   let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
   let lastAltitude = 0;
   let fuel = 100;
+  let isLanding = false;
 
   const dashboardElements = {
     fuel: document.getElementById('fuel'),
@@ -177,6 +178,13 @@
       fuel -= 0.05;
       fuel = Math.max(0, fuel);
     }
+
+    // Автоматична посадка
+    if (fuel < 25 && !isLanding) {
+      isLanding = true;
+      autoLand();
+    }
+
     dashboardElements.fuel.textContent = fuel.toFixed(0);
     if (fuel < 25) {
       dashboardElements.fuel.style.color = 'red';
@@ -187,6 +195,19 @@
     }
 
     lastAltitude = altitude;
+  }
+
+  function autoLand() {
+    if (!bayraktar) return;
+    const interval = setInterval(() => {
+      if (bayraktar.position.y > 0.3) {
+        bayraktar.position.y -= 0.01;
+      } else {
+        bayraktar.position.y = 0.3;
+        clearInterval(interval);
+        isLanding = false;
+      }
+    }, 50);
   }
 
   function drawHUD() {
