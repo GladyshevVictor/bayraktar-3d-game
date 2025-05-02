@@ -188,12 +188,28 @@
   function animate() {
     if (hasTakenOff && bayraktar) {
       if (cameraMode === 1) {
-        // Перша особа (носова камера)
         const front = new THREE.Vector3(0, 0.5, -1);
         front.applyMatrix4(bayraktar.matrixWorld);
         camera.position.lerp(front, 0.2);
         camera.lookAt(bayraktar.position);
       } else if (cameraMode === 2) {
+        const behind = new THREE.Vector3(0, 2, 8);
+        behind.applyMatrix4(bayraktar.matrixWorld);
+        camera.position.lerp(behind, 0.1);
+        camera.lookAt(bayraktar.position);
+      } else if (cameraMode === 3) {
+        controls.enabled = true;
+        controls.target.copy(bayraktar.position);
+        controls.update();
+      }
+    }
+    requestAnimationFrame(animate);
+    checkTakeOff();
+    moveBayraktar();
+    updateMissiles();
+    controls.update();
+    renderer.render(scene, camera);
+  } else if (cameraMode === 2) {
         // Кінематична ззаду
         const behind = new THREE.Vector3(0, 2, 8);
         behind.applyMatrix4(bayraktar.matrixWorld);
@@ -213,7 +229,7 @@
     updateMissiles();
     controls.update();
     renderer.render(scene, camera);
-  
+  }
 
   animate();
 </script>
