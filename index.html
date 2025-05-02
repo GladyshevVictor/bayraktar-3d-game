@@ -36,10 +36,11 @@
 <body>
 <div id="loading">Завантаження моделі Bayraktar...</div>
 <div id="hud">Цілі знищено: <span id="score">0</span></div>
-$1
+<div id="dashboard">
   <div>Пальне: <span id="fuel">100</span>%</div>
   <div>Висота: <span id="altitude">0</span> м</div>
   <div>Кут тангажа: <span id="pitch">0</span>°</div>
+  <div>Швидкість: <span id="speed">0</span> км/год</div>
 </div>
 <audio id="engineSound" src="diesel-drive-by-3-mz000007-47135.mp3" loop></audio>
 <audio id="startSound" src="engine-start-86242.mp3"></audio>
@@ -153,13 +154,20 @@ $1
     const speed = 5 * (keys['w'] ? 1 : 0);
     const altitude = bayraktar.position.y.toFixed(1);
     const pitch = (bayraktar.rotation.x * (180 / Math.PI)).toFixed(1);
-    const fuel = parseFloat(document.getElementById('fuel').textContent);
+    const fuelEl = document.getElementById('fuel');
+    const speedEl = document.getElementById('speed');
+    const altitudeEl = document.getElementById('altitude');
+    const pitchEl = document.getElementById('pitch');
+
+    if (!fuelEl || !speedEl || !altitudeEl || !pitchEl) return;
+
+    const fuel = parseFloat(fuelEl.textContent);
     if (hasTakenOff && speed > 0 && fuel > 0) {
-      document.getElementById('fuel').textContent = (fuel - 0.05).toFixed(1);
+      fuelEl.textContent = (fuel - 0.05).toFixed(1);
     }
-    document.getElementById('speed').textContent = speed;
-    document.getElementById('altitude').textContent = altitude;
-    document.getElementById('pitch').textContent = pitch;
+    speedEl.textContent = speed;
+    altitudeEl.textContent = altitude;
+    pitchEl.textContent = pitch;
   }
 
   function animate() {
