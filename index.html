@@ -73,6 +73,109 @@
   runway.position.z = -40;
   scene.add(runway);
 
+  const controlTower = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 8, 2),
+    new THREE.MeshStandardMaterial({ color: 0x888888 })
+  );
+  controlTower.position.set(6, 4, -60);
+  scene.add(controlTower);
+
+  const hangar = new THREE.Mesh(
+    new THREE.BoxGeometry(10, 4, 10),
+    new THREE.MeshStandardMaterial({ color: 0x555555 })
+  );
+  hangar.position.set(-12, 2, -70);
+  scene.add(hangar);
+
+  const lightPole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.1, 6),
+    new THREE.MeshStandardMaterial({ color: 0xffffee })
+  );
+  lightPole.position.set(10, 3, -30);
+  scene.add(lightPole);
+
+  const pointLight = new THREE.PointLight(0xffffff, 1, 30);
+  pointLight.position.set(10, 6, -30);
+  scene.add(pointLight);
+
+  const fenceMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
+  for (let i = -50; i <= 50; i += 5) {
+    const post = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 2, 0.2),
+      fenceMaterial
+    );
+    post.position.set(i, 1, -100);
+    scene.add(post);
+  }
+
+  const flagPole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.1, 6),
+    new THREE.MeshStandardMaterial({ color: 0xcccccc })
+  );
+  flagPole.position.set(-20, 3, -60);
+  scene.add(flagPole);
+
+  const flag = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 1),
+    new THREE.MeshStandardMaterial({ color: 0x0057b7, side: THREE.DoubleSide })
+  );
+  flag.position.set(-20, 4, -60.9);
+  flag.rotation.y = Math.PI / 2;
+  scene.add(flag);
+
+  const beacon = new THREE.Mesh(
+    new THREE.SphereGeometry(0.2, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xff0000 })
+  );
+  beacon.position.set(6, 8.5, -60);
+  scene.add(beacon);
+
+  const beaconLight = new THREE.PointLight(0xff0000, 1, 10);
+  beaconLight.position.copy(beacon.position);
+  scene.add(beaconLight);
+
+  const truckBody = new THREE.Mesh(
+    new THREE.BoxGeometry(4, 2, 2),
+    new THREE.MeshStandardMaterial({ color: 0x444444 })
+  );
+  truckBody.position.set(-30, 1, -80);
+  scene.add(truckBody);
+
+  const truckCab = new THREE.Mesh(
+    new THREE.BoxGeometry(1.5, 1.5, 2),
+    new THREE.MeshStandardMaterial({ color: 0x222222 })
+  );
+  truckCab.position.set(-32.25, 1.25, -80);
+  scene.add(truckCab);
+
+  // Додамо тягач
+  const tractor = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 1.5, 1.5),
+    new THREE.MeshStandardMaterial({ color: 0x226699 })
+  );
+  tractor.position.set(15, 0.75, -85);
+  scene.add(tractor);
+
+  const generator = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 1.5, 1.5),
+    new THREE.MeshStandardMaterial({ color: 0x888800 })
+  );
+  generator.position.set(18, 0.75, -90);
+  scene.add(generator);
+
+  const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x111111 });
+  for (let offset of [-1.5, 1.5]) {
+    for (let x of [-28.5, -31.5]) {
+      const wheel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.4, 0.5, 16),
+        wheelMaterial
+      );
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, 0.4, -80 + offset);
+      scene.add(wheel);
+    }
+  }
+
   const loader = new GLTFLoader();
   loader.load('baykar_bayraktar_tb2.glb',
     function (gltf) {
@@ -161,6 +264,7 @@
       missile.position.z -= 0.2;
       targets.forEach((target, j) => {
         if (missile.position.distanceTo(target.position) < 0.5) {
+          createExplosion(target.position);
           scene.remove(target);
           scene.remove(missile);
           targets.splice(j, 1);
@@ -168,6 +272,93 @@
           score++;
           document.getElementById('score').textContent = score;
         }
+      });
+      if (missile.position.z < -200) {
+        scene.remove(missile);
+        missiles.splice(i, 1);
+      }
+    });
+  }
+
+  function createExplosion(position) {
+    const explosion = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xff6600 })
+    );
+    explosion.position.copy(position);
+    scene.add(explosion);
+
+    const particleCount = 20;
+    for (let i = 0; i < particleCount; i++) {
+      const particle = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05, 4, 4),
+        new THREE.MeshBasicMaterial({ color: 0xffff00 })
+      );
+      particle.position.copy(position);
+      const velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 2
+      );
+      scene.add(particle);
+      const life = 300 + Math.random() * 200;
+      const start = Date.now();
+      (function animateParticle() {
+        const elapsed = Date.now() - start;
+        if (elapsed < life) {
+          particle.position.addScaledVector(velocity, 0.05);
+          requestAnimationFrame(animateParticle);
+        } else {
+          scene.remove(particle);
+        }
+      })();
+    }
+
+    setTimeout(() => {
+      scene.remove(explosion);
+    }, 300);
+  })
+    );
+    explosion.position.copy(position);
+    scene.add(explosion);
+
+    const particleCount = 20;
+    for (let i = 0; i < particleCount; i++) {
+      const particle = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05, 4, 4),
+        new THREE.MeshBasicMaterial({ color: 0xffff00 })
+      );
+      particle.position.copy(position);
+      const velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 2
+      );
+      scene.add(particle);
+      const life = 300 + Math.random() * 200;
+      const start = Date.now();
+      (function animateParticle() {
+        const elapsed = Date.now() - start;
+        if (elapsed < life) {
+          particle.position.addScaledVector(velocity, 0.05);
+          requestAnimationFrame(animateParticle);
+        } else {
+          scene.remove(particle);
+        }
+      })();
+    }
+
+    setTimeout(() => {
+      scene.remove(explosion);
+    }, 300);
+  })
+    );
+    explosion.position.copy(position);
+    scene.add(explosion);
+    setTimeout(() => {
+      scene.remove(explosion);
+    }, 300);
+  }
       });
       if (missile.position.z < -200) {
         scene.remove(missile);
@@ -185,6 +376,9 @@
   }
 
   function animate() {
+    const time = Date.now() * 0.005;
+    flag.rotation.z = Math.sin(time * 0.2) * 0.1;
+    beacon.material.color.setHSL(Math.sin(time * 0.5) * 0.5 + 0.5, 1, 0.5);
     if (hasTakenOff && bayraktar) {
       if (cameraMode === 1) {
         const front = new THREE.Vector3(0, 0.5, -1);
