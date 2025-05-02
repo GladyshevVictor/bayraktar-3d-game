@@ -142,6 +142,7 @@
       scene.add(bayraktar);
       camera.lookAt(bayraktar.position);
       document.getElementById('loading').style.display = 'none';
+      animate();
     },
     undefined,
     function (error) {
@@ -181,10 +182,16 @@
       hudCtx.fillText(`${angle}`, centerX + 35, lineY + 4);
     }
 
-    // Draw compass heading
     hudCtx.font = '12px monospace';
     hudCtx.fillStyle = 'white';
     hudCtx.fillText(`HDG ${Math.round(THREE.MathUtils.radToDeg(yaw)) % 360}`, centerX - 20, hudCanvas.height - 30);
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+    drawHUD();
   }
 </script>
 </body>
