@@ -70,7 +70,8 @@
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-  let scene, camera, renderer, controls, bayraktar, score = 0;
+  let scene, camera, renderer, controls, bayraktar, propeller;
+  let score = 0;
   let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
   let lastAltitude = 0;
   let fuel = 100;
@@ -170,6 +171,9 @@
           child.castShadow = true;
           child.receiveShadow = true;
           child.material.side = THREE.DoubleSide;
+          if (child.name.toLowerCase().includes('propeller')) {
+            propeller = child;
+          }
         }
       });
       scene.add(bayraktar);
@@ -200,7 +204,6 @@
 
     bayraktar.rotation.y = THREE.MathUtils.degToRad(heading);
 
-    // Вираховуємо RPM за throttle:
     if (throttle === 0) rpm = 0;
     else if (throttle <= 10) rpm = 1600;
     else if (throttle <= 30) rpm = 2200;
@@ -290,6 +293,10 @@
     renderer.render(scene, camera);
     drawHUD();
     updateDashboard();
+
+    if (propeller && rpm > 0) {
+      propeller.rotation.z += 0.1 + rpm / 20000;
+    }
   }
 </script>
 </body>
