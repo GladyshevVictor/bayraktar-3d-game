@@ -74,6 +74,9 @@
   let fuel = 100;
   let isLanding = false;
 
+  const engineSound = document.getElementById('engineSound');
+  const startSound = document.getElementById('startSound');
+
   const dashboardElements = {
     fuel: document.getElementById('fuel'),
     altitude: document.getElementById('altitude'),
@@ -93,6 +96,19 @@
 
   window.addEventListener('resize', resizeHUD);
   resizeHUD();
+
+  document.addEventListener('keydown', (event) => {
+    keys[event.key.toLowerCase()] = true;
+    if (event.key.toLowerCase() === 'e') {
+      startSound.play().then(() => {
+        engineSound.play();
+      });
+    }
+  });
+
+  document.addEventListener('keyup', (event) => {
+    keys[event.key.toLowerCase()] = false;
+  });
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x202840);
