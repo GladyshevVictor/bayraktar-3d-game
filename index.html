@@ -149,11 +149,6 @@
 
   function updateDashboard() {
     if (!bayraktar) return;
-    const velocity = new THREE.Vector3();
-    bayraktar.getWorldDirection(velocity);
-    const speed = 5 * (keys['w'] ? 1 : 0);
-    const altitude = bayraktar.position.y.toFixed(1);
-    const pitch = (bayraktar.rotation.x * (180 / Math.PI)).toFixed(1);
     const fuelEl = document.getElementById('fuel');
     const speedEl = document.getElementById('speed');
     const altitudeEl = document.getElementById('altitude');
@@ -161,9 +156,13 @@
 
     if (!fuelEl || !speedEl || !altitudeEl || !pitchEl) return;
 
+    const speed = (keys['w'] ? 60 : 0); // умовна швидкість
+    const altitude = bayraktar.position.y.toFixed(1);
+    const pitch = (bayraktar.rotation.x * (180 / Math.PI)).toFixed(1);
     const fuel = parseFloat(fuelEl.textContent);
+
     if (hasTakenOff && speed > 0 && fuel > 0) {
-      fuelEl.textContent = (fuel - 0.05).toFixed(1);
+      fuelEl.textContent = (fuel - 0.1).toFixed(1);
     }
     speedEl.textContent = speed;
     altitudeEl.textContent = altitude;
