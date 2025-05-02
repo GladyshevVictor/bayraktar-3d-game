@@ -155,6 +155,7 @@
     hudCtx.lineWidth = 2;
 
     const pitch = bayraktar ? bayraktar.rotation.x : 0;
+    const yaw = bayraktar ? bayraktar.rotation.y : 0;
     const offset = pitch * 180 / Math.PI * 2;
     const centerX = hudCanvas.width / 2;
     const centerY = hudCanvas.height / 2 + offset;
@@ -176,10 +177,14 @@
       hudCtx.moveTo(centerX - 30, lineY);
       hudCtx.lineTo(centerX + 30, lineY);
       hudCtx.stroke();
-
       hudCtx.fillStyle = 'lime';
       hudCtx.fillText(`${angle}`, centerX + 35, lineY + 4);
     }
+
+    // Draw compass heading
+    hudCtx.font = '12px monospace';
+    hudCtx.fillStyle = 'white';
+    hudCtx.fillText(`HDG ${Math.round(THREE.MathUtils.radToDeg(yaw)) % 360}`, centerX - 20, hudCanvas.height - 30);
   }
 </script>
 </body>
