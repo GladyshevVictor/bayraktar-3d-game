@@ -29,6 +29,14 @@
       left: 0;
       pointer-events: none;
     }
+    .hud-box {
+      position: absolute;
+      color: lime;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .hud-box.speed { top: 40%; left: 30px; }
+    .hud-box.altitude { top: 40%; right: 30px; }
   </style>
   <script type="importmap">
     {
@@ -51,6 +59,8 @@
   <div>Курс: <span id="heading">0</span>°</div>
   <div>Вертикальна швидкість: <span id="vspeed">0</span> м/хв</div>
 </div>
+<div class="hud-box speed">SPD<br><span id="hudSpeed">--</span> kn</div>
+<div class="hud-box altitude">ALT<br><span id="hudAlt">--</span> ft</div>
 <audio id="engineSound" src="diesel-drive-by-3-mz000007-47135.mp3" loop></audio>
 <audio id="startSound" src="engine-start-86242.mp3"></audio>
 <audio id="missileSound" src="missile-firing-fl-106655.mp3"></audio>
@@ -176,8 +186,10 @@
     const pitchEl = document.getElementById('pitch');
     const headingEl = document.getElementById('heading');
     const vspeedEl = document.getElementById('vspeed');
+    const hudSpeed = document.getElementById('hudSpeed');
+    const hudAlt = document.getElementById('hudAlt');
 
-    if (!fuelEl || !speedEl || !altitudeEl || !pitchEl || !headingEl || !vspeedEl) return;
+    if (!fuelEl || !speedEl || !altitudeEl || !pitchEl || !headingEl || !vspeedEl || !hudSpeed || !hudAlt) return;
 
     const speed = (keys['w'] ? 60 : 0);
     const altitude = bayraktar.position.y.toFixed(1);
@@ -189,11 +201,14 @@
     if (hasTakenOff && speed > 0 && fuel > 0) {
       fuelEl.textContent = (fuel - 0.1).toFixed(1);
     }
+
     speedEl.textContent = speed;
     altitudeEl.textContent = altitude;
     pitchEl.textContent = pitch;
     headingEl.textContent = heading;
     vspeedEl.textContent = vspeed;
+    hudSpeed.textContent = speed;
+    hudAlt.textContent = (altitude * 3.28084).toFixed(0); // м в фути
 
     lastAltitude = bayraktar.position.y;
   }
