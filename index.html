@@ -208,7 +208,7 @@
     headingEl.textContent = heading;
     vspeedEl.textContent = vspeed;
     hudSpeed.textContent = speed;
-    hudAlt.textContent = (altitude * 3.28084).toFixed(0); // м в фути
+    hudAlt.textContent = (altitude * 3.28084).toFixed(0);
 
     lastAltitude = bayraktar.position.y;
   }
@@ -217,6 +217,17 @@
     hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
     hudCtx.strokeStyle = 'lime';
     hudCtx.lineWidth = 2;
+
+    // Horizon
+    const pitch = bayraktar ? bayraktar.rotation.x : 0;
+    const horizonOffset = pitch * 180 / Math.PI * 2;
+    const centerY = hudCanvas.height / 2 + horizonOffset;
+    hudCtx.beginPath();
+    hudCtx.moveTo(hudCanvas.width / 2 - 100, centerY);
+    hudCtx.lineTo(hudCanvas.width / 2 + 100, centerY);
+    hudCtx.stroke();
+
+    // Central marker
     hudCtx.beginPath();
     hudCtx.moveTo(hudCanvas.width / 2 - 20, hudCanvas.height / 2);
     hudCtx.lineTo(hudCanvas.width / 2 + 20, hudCanvas.height / 2);
