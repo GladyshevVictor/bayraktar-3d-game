@@ -72,6 +72,15 @@
   let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
   let lastAltitude = 0;
 
+  const dashboardElements = {
+    fuel: document.getElementById('fuel'),
+    altitude: document.getElementById('altitude'),
+    pitch: document.getElementById('pitch'),
+    speed: document.getElementById('speed'),
+    heading: document.getElementById('heading'),
+    vspeed: document.getElementById('vspeed'),
+  };
+
   const hudCanvas = document.getElementById('hudCanvas');
   const hudCtx = hudCanvas.getContext('2d');
 
@@ -149,6 +158,23 @@
     }
   );
 
+  function updateDashboard() {
+    if (!bayraktar) return;
+    const altitude = bayraktar.position.y;
+    const pitch = THREE.MathUtils.radToDeg(bayraktar.rotation.x);
+    const yaw = THREE.MathUtils.radToDeg(bayraktar.rotation.y);
+    const vspeed = (altitude - lastAltitude) * 60;
+    const speed = keys['w'] || keys['s'] ? 180 : 0;
+
+    dashboardElements.altitude.textContent = altitude.toFixed(1);
+    dashboardElements.pitch.textContent = pitch.toFixed(0);
+    dashboardElements.heading.textContent = (yaw % 360).toFixed(0);
+    dashboardElements.vspeed.textContent = vspeed.toFixed(0);
+    dashboardElements.speed.textContent = speed;
+
+    lastAltitude = altitude;
+  }
+
   function drawHUD() {
     hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
     hudCtx.strokeStyle = 'lime';
@@ -191,6 +217,7 @@
     controls.update();
     renderer.render(scene, camera);
     drawHUD();
+    updateDashboard();
   }
 </script>
 </body>
