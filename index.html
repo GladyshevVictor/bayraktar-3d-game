@@ -52,7 +52,6 @@
 
   let scene, camera, renderer, controls, bayraktar, score = 0;
   let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
-  let forceArrows = {}; // нове
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x202840);
@@ -112,17 +111,6 @@
       scene.add(bayraktar);
       camera.lookAt(bayraktar.position);
       document.getElementById('loading').style.display = 'none';
-
-      // додавання сил
-      const length = 1.5;
-      forceArrows.thrust = new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), bayraktar.position, length, 0x00ff00);
-      forceArrows.lift = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), bayraktar.position, length, 0x0000ff);
-      forceArrows.drag = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), bayraktar.position, length, 0xff0000);
-      forceArrows.weight = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), bayraktar.position, length, 0xffff00);
-
-      for (const key in forceArrows) {
-        scene.add(forceArrows[key]);
-      }
     },
     undefined,
     function (error) {
@@ -181,20 +169,12 @@
     pitchEl.textContent = pitch;
   }
 
-  function updateForces() {
-    if (!bayraktar) return;
-    for (const key in forceArrows) {
-      forceArrows[key].position.copy(bayraktar.position);
-    }
-  }
-
   function animate() {
     requestAnimationFrame(animate);
     checkTakeOff();
     moveBayraktar();
     updateMissiles();
     updateDashboard();
-    updateForces();
     controls.update();
     renderer.render(scene, camera);
   }
