@@ -149,111 +149,38 @@
     }
   );
 
-  function checkTakeOff() {
-    if (!hasTakenOff && keys['r']) {
-      hasTakenOff = true;
-      document.getElementById('startSound').play();
-      document.getElementById('engineSound').play();
-    }
-  }
-
-  function moveBayraktar() {
-    if (!bayraktar || !hasTakenOff) return;
-    const speed = 0.05;
-    if (keys['w']) bayraktar.position.z -= speed;
-    if (keys['s']) bayraktar.position.z += speed;
-    if (keys['a']) bayraktar.position.x -= speed;
-    if (keys['d']) bayraktar.position.x += speed;
-    if (keys['q']) bayraktar.rotation.y -= 0.03;
-    if (keys['e']) bayraktar.rotation.y += 0.03;
-  }
-
-  function updateMissiles() {
-    missiles.forEach((missile, i) => {
-      missile.position.z -= 0.2;
-      if (missile.position.z < -200) {
-        scene.remove(missile);
-        missiles.splice(i, 1);
-      }
-    });
-  }
-
-  function updateDashboard() {
-    if (!bayraktar) return;
-    const fuelEl = document.getElementById('fuel');
-    const speedEl = document.getElementById('speed');
-    const altitudeEl = document.getElementById('altitude');
-    const pitchEl = document.getElementById('pitch');
-    const headingEl = document.getElementById('heading');
-    const vspeedEl = document.getElementById('vspeed');
-    const hudSpeed = document.getElementById('hudSpeed');
-    const hudAlt = document.getElementById('hudAlt');
-
-    if (!fuelEl || !speedEl || !altitudeEl || !pitchEl || !headingEl || !vspeedEl || !hudSpeed || !hudAlt) return;
-
-    const speed = (keys['w'] ? 60 : 0);
-    const altitude = bayraktar.position.y.toFixed(1);
-    const pitch = (bayraktar.rotation.x * (180 / Math.PI)).toFixed(1);
-    const heading = (bayraktar.rotation.y * (180 / Math.PI)).toFixed(1);
-    const vspeed = ((bayraktar.position.y - lastAltitude) * 60).toFixed(1);
-    const fuel = parseFloat(fuelEl.textContent);
-
-    if (hasTakenOff && speed > 0 && fuel > 0) {
-      fuelEl.textContent = (fuel - 0.1).toFixed(1);
-    }
-
-    speedEl.textContent = speed;
-    altitudeEl.textContent = altitude;
-    pitchEl.textContent = pitch;
-    headingEl.textContent = heading;
-    vspeedEl.textContent = vspeed;
-    hudSpeed.textContent = speed;
-    hudAlt.textContent = (altitude * 3.28084).toFixed(0);
-
-    lastAltitude = bayraktar.position.y;
-  }
-
   function drawHUD() {
     hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
     hudCtx.strokeStyle = 'lime';
     hudCtx.lineWidth = 2;
 
-    // Horizon
     const pitch = bayraktar ? bayraktar.rotation.x : 0;
-    const horizonOffset = pitch * 180 / Math.PI * 2;
-    const centerY = hudCanvas.height / 2 + horizonOffset;
+    const offset = pitch * 180 / Math.PI * 2;
+    const centerX = hudCanvas.width / 2;
+    const centerY = hudCanvas.height / 2 + offset;
+
     hudCtx.beginPath();
-    hudCtx.moveTo(hudCanvas.width / 2 - 100, centerY);
-    hudCtx.lineTo(hudCanvas.width / 2 + 100, centerY);
+    hudCtx.moveTo(centerX - 100, centerY);
+    hudCtx.lineTo(centerX + 100, centerY);
     hudCtx.stroke();
 
-    // Central marker
     hudCtx.beginPath();
-    hudCtx.moveTo(hudCanvas.width / 2 - 20, hudCanvas.height / 2);
-    hudCtx.lineTo(hudCanvas.width / 2 + 20, hudCanvas.height / 2);
+    hudCtx.moveTo(centerX - 20, hudCanvas.height / 2);
+    hudCtx.lineTo(centerX + 20, hudCanvas.height / 2);
     hudCtx.stroke();
+
+    for (let angle = -30; angle <= 30; angle += 10) {
+      if (angle === 0) continue;
+      const lineY = hudCanvas.height / 2 - angle * 4 + offset;
+      hudCtx.beginPath();
+      hudCtx.moveTo(centerX - 30, lineY);
+      hudCtx.lineTo(centerX + 30, lineY);
+      hudCtx.stroke();
+
+      hudCtx.fillStyle = 'lime';
+      hudCtx.fillText(`${angle}`, centerX + 35, lineY + 4);
+    }
   }
-
-  function animate() {
-    requestAnimationFrame(animate);
-    checkTakeOff();
-    moveBayraktar();
-    updateMissiles();
-    updateDashboard();
-    drawHUD();
-    controls.update();
-    renderer.render(scene, camera);
-  }
-
-  window.addEventListener('keydown', (e) => {
-    keys[e.key.toLowerCase()] = true;
-  });
-
-  window.addEventListener('keyup', (e) => {
-    keys[e.key.toLowerCase()] = false;
-  });
-
-  animate();
 </script>
 </body>
 </html>
