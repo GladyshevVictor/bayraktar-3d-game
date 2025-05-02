@@ -317,49 +317,7 @@
     setTimeout(() => {
       scene.remove(explosion);
     }, 300);
-  
-    
-    explosion.position.copy(position);
-    scene.add(explosion);
-
-    const particleCount = 20;
-    for (let i = 0; i < particleCount; i++) {
-      const particle = new THREE.Mesh(
-        new THREE.SphereGeometry(0.05, 4, 4),
-        new THREE.MeshBasicMaterial({ color: 0xffff00 })
-      );
-      particle.position.copy(position);
-      const velocity = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2
-      );
-      scene.add(particle);
-      const life = 300 + Math.random() * 200;
-      const start = Date.now();
-      (function animateParticle() {
-        const elapsed = Date.now() - start;
-        if (elapsed < life) {
-          particle.position.addScaledVector(velocity, 0.05);
-          requestAnimationFrame(animateParticle);
-        } else {
-          scene.remove(particle);
-        }
-      })();
-    }
-
-    setTimeout(() => {
-      scene.remove(explosion);
-    }, 300);
-  })
-    );
-    explosion.position.copy(position);
-    scene.add(explosion);
-    setTimeout(() => {
-      scene.remove(explosion);
-    }, 300);
-  }
-      });
+  }});
       if (missile.position.z < -200) {
         scene.remove(missile);
         missiles.splice(i, 1);
