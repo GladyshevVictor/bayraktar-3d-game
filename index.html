@@ -73,7 +73,39 @@
     }, 300);
   }
 
-  // ... [Remaining code stays unchanged] ...
+  function animate() {
+    const time = Date.now() * 0.005;
+    if (typeof flag !== 'undefined') {
+      flag.rotation.z = Math.sin(time * 0.2) * 0.1;
+    }
+    if (typeof beacon !== 'undefined') {
+      beacon.material.color.setHSL(Math.sin(time * 0.5) * 0.5 + 0.5, 1, 0.5);
+    }
+
+    if (hasTakenOff && bayraktar) {
+      if (cameraMode === 1) {
+        const front = new THREE.Vector3(0, 0.5, -1);
+        front.applyMatrix4(bayraktar.matrixWorld);
+        camera.position.lerp(front, 0.2);
+        camera.lookAt(bayraktar.position);
+      } else if (cameraMode === 2) {
+        const behind = new THREE.Vector3(0, 2, 8);
+        behind.applyMatrix4(bayraktar.matrixWorld);
+        camera.position.lerp(behind, 0.1);
+        camera.lookAt(bayraktar.position);
+      } else if (cameraMode === 3) {
+        controls.enabled = true;
+        controls.target.copy(bayraktar.position);
+        controls.update();
+      }
+    }
+    requestAnimationFrame(animate);
+    checkTakeOff();
+    moveBayraktar();
+    updateMissiles();
+    controls.update();
+    renderer.render(scene, camera);
+  }
 
   animate();
 </script>
