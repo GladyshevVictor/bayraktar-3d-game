@@ -78,7 +78,7 @@
     function (gltf) {
       bayraktar = gltf.scene;
       bayraktar.scale.set(0.03, 0.03, 0.03);
-      bayraktar.rotation.y = 0; // Повертає дрон носом вперед
+      bayraktar.rotation.y = 0;
       bayraktar.position.set(0, 0.25, 0);
       bayraktar.traverse((child) => {
         if (child.isMesh) {
@@ -183,7 +183,6 @@
       document.getElementById('engineSound').play();
     }
   }
-  
 
   function animate() {
     if (hasTakenOff && bayraktar) {
@@ -202,26 +201,6 @@
         controls.target.copy(bayraktar.position);
         controls.update();
       }
-    }
-    requestAnimationFrame(animate);
-    checkTakeOff();
-    moveBayraktar();
-    updateMissiles();
-    controls.update();
-    renderer.render(scene, camera);
-  } else if (cameraMode === 2) {
-        // Кінематична ззаду
-        const behind = new THREE.Vector3(0, 2, 8);
-        behind.applyMatrix4(bayraktar.matrixWorld);
-        camera.position.lerp(behind, 0.1);
-        camera.lookAt(bayraktar.position);
-      } else if (cameraMode === 3) {
-        // Вільна камера (Orbit)
-        controls.enabled = true;
-        controls.target.copy(bayraktar.position);
-        controls.update();
-      }
-    }
     }
     requestAnimationFrame(animate);
     checkTakeOff();
