@@ -8,6 +8,21 @@
     canvas { display: block; }
     #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-family: Arial; }
     #hud { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial; font-size: 14px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; }
+    #dashboard {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      font-family: Arial;
+      font-size: 12px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      display: flex;
+      gap: 20px;
+    }
+    #dashboard span { display: block; }
   </style>
   <script type="importmap">
     {
@@ -21,6 +36,11 @@
 <body>
 <div id="loading">Завантаження моделі Bayraktar...</div>
 <div id="hud">Цілі знищено: <span id="score">0</span></div>
+<div id="dashboard">
+  <div>Швидкість: <span id="speed">0</span> м/с</div>
+  <div>Висота: <span id="altitude">0</span> м</div>
+  <div>Кут тангажа: <span id="pitch">0</span>°</div>
+</div>
 <audio id="engineSound" src="diesel-drive-by-3-mz000007-47135.mp3" loop></audio>
 <audio id="startSound" src="engine-start-86242.mp3"></audio>
 <audio id="missileSound" src="missile-firing-fl-106655.mp3"></audio>
@@ -126,11 +146,25 @@
     });
   }
 
+  function updateDashboard() {
+    if (!bayraktar) return;
+    const velocity = new THREE.Vector3();
+    bayraktar.getWorldDirection(velocity);
+    const speed = 5 * (keys['w'] ? 1 : 0); // conditionally show speed only if moving
+    const altitude = bayraktar.position.y.toFixed(1);
+    const pitch = (bayraktar.rotation.x * (180 / Math.PI)).toFixed(1);
+
+    document.getElementById('speed').textContent = speed;
+    document.getElementById('altitude').textContent = altitude;
+    document.getElementById('pitch').textContent = pitch;
+  }
+
   function animate() {
     requestAnimationFrame(animate);
     checkTakeOff();
     moveBayraktar();
     updateMissiles();
+    updateDashboard();
     controls.update();
     renderer.render(scene, camera);
   }
