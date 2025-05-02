@@ -78,7 +78,7 @@
     function (gltf) {
       bayraktar = gltf.scene;
       bayraktar.scale.set(0.03, 0.03, 0.03);
-      bayraktar.rotation.y = Math.PI; // Повертає дрон носом вперед
+      bayraktar.rotation.y = 0; // Повертає дрон носом вперед
       bayraktar.position.set(0, 0.25, 0);
       bayraktar.traverse((child) => {
         if (child.isMesh) {
@@ -132,8 +132,8 @@
     if (keys['s']) bayraktar.position.z += speed;
     if (keys['a']) bayraktar.position.x -= speed;
     if (keys['d']) bayraktar.position.x += speed;
-    if (keys['q']) bayraktar.rotation.y += 0.03;
-    if (keys['e']) bayraktar.rotation.y -= 0.03;
+    if (keys['q']) bayraktar.rotation.y -= 0.03;
+    if (keys['e']) bayraktar.rotation.y += 0.03;
   }
 
   function shootMissile() {
