@@ -51,6 +51,10 @@
   document.body.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.rotateSpeed = 0.5;
+  controls.enableZoom = true;
   controls.target.set(0, 1, 0);
   controls.update();
 
@@ -74,6 +78,7 @@
     function (gltf) {
       bayraktar = gltf.scene;
       bayraktar.scale.set(0.03, 0.03, 0.03);
+      bayraktar.rotation.y = Math.PI; // Повертає дрон носом вперед
       bayraktar.position.set(0, 0.25, 0);
       bayraktar.traverse((child) => {
         if (child.isMesh) {
@@ -181,6 +186,7 @@
     checkTakeOff();
     moveBayraktar();
     updateMissiles();
+    controls.update();
     renderer.render(scene, camera);
   }
 
