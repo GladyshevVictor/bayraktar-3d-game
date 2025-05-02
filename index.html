@@ -41,6 +41,8 @@
   <div>Висота: <span id="altitude">0</span> м</div>
   <div>Кут тангажа: <span id="pitch">0</span>°</div>
   <div>Швидкість: <span id="speed">0</span> км/год</div>
+  <div>Курс: <span id="heading">0</span>°</div>
+  <div>Вертикальна швидкість: <span id="vspeed">0</span> м/хв</div>
 </div>
 <audio id="engineSound" src="diesel-drive-by-3-mz000007-47135.mp3" loop></audio>
 <audio id="startSound" src="engine-start-86242.mp3"></audio>
@@ -52,6 +54,7 @@
 
   let scene, camera, renderer, controls, bayraktar, score = 0;
   let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
+  let lastAltitude = 0;
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x202840);
@@ -153,12 +156,16 @@
     const speedEl = document.getElementById('speed');
     const altitudeEl = document.getElementById('altitude');
     const pitchEl = document.getElementById('pitch');
+    const headingEl = document.getElementById('heading');
+    const vspeedEl = document.getElementById('vspeed');
 
-    if (!fuelEl || !speedEl || !altitudeEl || !pitchEl) return;
+    if (!fuelEl || !speedEl || !altitudeEl || !pitchEl || !headingEl || !vspeedEl) return;
 
     const speed = (keys['w'] ? 60 : 0);
     const altitude = bayraktar.position.y.toFixed(1);
     const pitch = (bayraktar.rotation.x * (180 / Math.PI)).toFixed(1);
+    const heading = (bayraktar.rotation.y * (180 / Math.PI)).toFixed(1);
+    const vspeed = ((bayraktar.position.y - lastAltitude) * 60).toFixed(1);
     const fuel = parseFloat(fuelEl.textContent);
 
     if (hasTakenOff && speed > 0 && fuel > 0) {
@@ -167,6 +174,10 @@
     speedEl.textContent = speed;
     altitudeEl.textContent = altitude;
     pitchEl.textContent = pitch;
+    headingEl.textContent = heading;
+    vspeedEl.textContent = vspeed;
+
+    lastAltitude = bayraktar.position.y;
   }
 
   function animate() {
