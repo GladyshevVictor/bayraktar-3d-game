@@ -32,82 +32,44 @@
   let scene, camera, renderer, controls, bayraktar, score = 0;
   let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
 
-  // ... [Initialization code remains unchanged] ...
+  function checkTakeOff() {
+    if (!hasTakenOff && keys['r']) {
+      hasTakenOff = true;
+      document.getElementById('startSound').play();
+      document.getElementById('engineSound').play();
+    }
+  }
 
-  function createExplosion(position) {
-    const explosion = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0xff6600 })
-    );
-    explosion.position.copy(position);
-    scene.add(explosion);
+  function moveBayraktar() {
+    if (!bayraktar || !hasTakenOff) return;
+    const speed = 0.05;
+    if (keys['w']) bayraktar.position.z -= speed;
+    if (keys['s']) bayraktar.position.z += speed;
+    if (keys['a']) bayraktar.position.x -= speed;
+    if (keys['d']) bayraktar.position.x += speed;
+    if (keys['q']) bayraktar.rotation.y -= 0.03;
+    if (keys['e']) bayraktar.rotation.y += 0.03;
+  }
 
-    const particleCount = 20;
-    for (let i = 0; i < particleCount; i++) {
-      const particle = new THREE.Mesh(
-        new THREE.SphereGeometry(0.05, 4, 4),
-        new THREE.MeshBasicMaterial({ color: 0xffff00 })
-      );
-      particle.position.copy(position);
-      const velocity = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2
-      );
-      scene.add(particle);
-      const life = 300 + Math.random() * 200;
-      const start = Date.now();
-      (function animateParticle() {
-        const elapsed = Date.now() - start;
-        if (elapsed < life) {
-          particle.position.addScaledVector(velocity, 0.05);
-          requestAnimationFrame(animateParticle);
-        } else {
-          scene.remove(particle);
+  function updateMissiles() {
+    missiles.forEach((missile, i) => {
+      missile.position.z -= 0.2;
+      targets.forEach((target, j) => {
+        if (missile.position.distanceTo(target.position) < 0.5) {
+          scene.remove(target);
+          scene.remove(missile);
+          targets.splice(j, 1);
+          missiles.splice(i, 1);
+          score++;
+          document.getElementById('score').textContent = score;
         }
-      })();
-    }
-
-    setTimeout(() => {
-      scene.remove(explosion);
-    }, 300);
-  }
-
-  function animate() {
-    const time = Date.now() * 0.005;
-    if (typeof flag !== 'undefined') {
-      flag.rotation.z = Math.sin(time * 0.2) * 0.1;
-    }
-    if (typeof beacon !== 'undefined') {
-      beacon.material.color.setHSL(Math.sin(time * 0.5) * 0.5 + 0.5, 1, 0.5);
-    }
-
-    if (hasTakenOff && bayraktar) {
-      if (cameraMode === 1) {
-        const front = new THREE.Vector3(0, 0.5, -1);
-        front.applyMatrix4(bayraktar.matrixWorld);
-        camera.position.lerp(front, 0.2);
-        camera.lookAt(bayraktar.position);
-      } else if (cameraMode === 2) {
-        const behind = new THREE.Vector3(0, 2, 8);
-        behind.applyMatrix4(bayraktar.matrixWorld);
-        camera.position.lerp(behind, 0.1);
-        camera.lookAt(bayraktar.position);
-      } else if (cameraMode === 3) {
-        controls.enabled = true;
-        controls.target.copy(bayraktar.position);
-        controls.update();
+      });
+      if (missile.position.z < -200) {
+        scene.remove(missile);
+        missiles.splice(i, 1);
       }
-    }
-    requestAnimationFrame(animate);
-    checkTakeOff();
-    moveBayraktar();
-    updateMissiles();
-    controls.update();
-    renderer.render(scene, camera);
+    });
   }
-
-  animate();
 </script>
 </body>
 </html>
