@@ -23,6 +23,12 @@
       gap: 20px;
     }
     #dashboard span { display: block; }
+    #hudCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
   </style>
   <script type="importmap">
     {
@@ -34,6 +40,7 @@
   </script>
 </head>
 <body>
+<canvas id="hudCanvas"></canvas>
 <div id="loading">Завантаження моделі Bayraktar...</div>
 <div id="hud">Цілі знищено: <span id="score">0</span></div>
 <div id="dashboard">
@@ -55,6 +62,17 @@
   let scene, camera, renderer, controls, bayraktar, score = 0;
   let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
   let lastAltitude = 0;
+
+  const hudCanvas = document.getElementById('hudCanvas');
+  const hudCtx = hudCanvas.getContext('2d');
+
+  function resizeHUD() {
+    hudCanvas.width = window.innerWidth;
+    hudCanvas.height = window.innerHeight;
+  }
+
+  window.addEventListener('resize', resizeHUD);
+  resizeHUD();
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x202840);
@@ -180,12 +198,23 @@
     lastAltitude = bayraktar.position.y;
   }
 
+  function drawHUD() {
+    hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
+    hudCtx.strokeStyle = 'lime';
+    hudCtx.lineWidth = 2;
+    hudCtx.beginPath();
+    hudCtx.moveTo(hudCanvas.width / 2 - 20, hudCanvas.height / 2);
+    hudCtx.lineTo(hudCanvas.width / 2 + 20, hudCanvas.height / 2);
+    hudCtx.stroke();
+  }
+
   function animate() {
     requestAnimationFrame(animate);
     checkTakeOff();
     moveBayraktar();
     updateMissiles();
     updateDashboard();
+    drawHUD();
     controls.update();
     renderer.render(scene, camera);
   }
