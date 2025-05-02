@@ -71,6 +71,7 @@
   let scene, camera, renderer, controls, bayraktar, score = 0;
   let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
   let lastAltitude = 0;
+  let fuel = 100;
 
   const dashboardElements = {
     fuel: document.getElementById('fuel'),
@@ -171,6 +172,19 @@
     dashboardElements.heading.textContent = (yaw % 360).toFixed(0);
     dashboardElements.vspeed.textContent = vspeed.toFixed(0);
     dashboardElements.speed.textContent = speed;
+
+    if (hasTakenOff && fuel > 0 && (keys['w'] || keys['s'])) {
+      fuel -= 0.05;
+      fuel = Math.max(0, fuel);
+    }
+    dashboardElements.fuel.textContent = fuel.toFixed(0);
+    if (fuel < 25) {
+      dashboardElements.fuel.style.color = 'red';
+    } else if (fuel < 50) {
+      dashboardElements.fuel.style.color = 'orange';
+    } else {
+      dashboardElements.fuel.style.color = 'white';
+    }
 
     lastAltitude = altitude;
   }
