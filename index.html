@@ -194,10 +194,12 @@
     if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
     if (bayraktar) {
       if (cameraMode === 1) {
-        const tailOffset = new THREE.Vector3(0, 1.2, -5);
+        const tailOffset = new THREE.Vector3(0, 1.6, -6);
         tailOffset.applyMatrix4(bayraktar.matrixWorld);
         camera.position.lerp(tailOffset, 0.1);
-        camera.lookAt(bayraktar.position);
+        const forward = new THREE.Vector3(0, 1.2, 5);
+        forward.applyMatrix4(bayraktar.matrixWorld);
+        camera.lookAt(forward);
       } else if (cameraMode === 2) {
         const defaultCam = new THREE.Vector3(0, 2, 8);
         camera.position.lerp(defaultCam, 0.1);
