@@ -93,7 +93,19 @@
   const light = new THREE.HemisphereLight(0xffffff, 0x444444);
   scene.add(light);
 
-  // Видалено runway із zps.png, так як текстура більше недоступна
+  // Додано runway із дефолтною текстурою для покриття
+  const loader = new THREE.TextureLoader();
+  const runwayTexture = loader.load('runway_texture.jpg');
+  runwayTexture.wrapS = runwayTexture.wrapT = THREE.RepeatWrapping;
+  runwayTexture.repeat.set(4, 1);
+
+  const runway = new THREE.Mesh(
+    new THREE.PlaneGeometry(400, 100),
+    new THREE.MeshStandardMaterial({ map: runwayTexture })
+  );
+  runway.rotation.x = -Math.PI / 2;
+  runway.position.y = 0;
+  scene.add(runway);
 
   function animate() {
     requestAnimationFrame(animate);
