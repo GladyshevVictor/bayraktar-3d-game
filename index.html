@@ -79,7 +79,7 @@
   let heading = 0;
   let throttle = 0;
   let rpm = 0;
-  let engineStarted = false;
+  let engineRunning = false;
 
   const engineSound = document.getElementById('engineSound');
   const startSound = document.getElementById('startSound');
@@ -111,12 +111,14 @@
     keys[key] = true;
 
     if (key === 'r') {
-      if (!engineStarted) {
-        startSound.play().then(() => engineSound.play());
-        engineStarted = true;
+      engineRunning = !engineRunning;
+      if (engineRunning) {
+        startSound.play().then(() => {
+          engineSound.play();
+        });
       } else {
         engineSound.pause();
-        engineStarted = false;
+        engineSound.currentTime = 0;
         throttle = 0;
         rpm = 0;
       }
@@ -124,7 +126,6 @@
 
     if (key === 'w') throttle = Math.min(throttle + 5, 100);
     if (key === 's') throttle = Math.max(throttle - 5, 0);
-
     if (key === '1') cameraMode = 1;
     if (key === '2') cameraMode = 2;
     if (key === '3') cameraMode = 3;
@@ -186,7 +187,7 @@
   scene.add(runway);
 
   const loader = new GLTFLoader();
-  loader.load('bayraktar.glb', function (gltf) {
+  loader.load('bayraktar.glb', (gltf) => {
     bayraktar = gltf.scene;
     bayraktar.scale.set(0.03, 0.03, 0.03);
     bayraktar.rotation.y = 0;
@@ -205,6 +206,8 @@
     camera.lookAt(bayraktar.position);
     document.getElementById('loading').style.display = 'none';
     animate();
+  }, undefined, (error) => {
+    console.error('❌ Помилка завантаження моделі Bayraktar:', error);
   });
 
   function updateDashboard() {
@@ -213,11 +216,13 @@
     }
     dashboardElements.fuel.textContent = fuel.toFixed(1);
     dashboardElements.fuel.parentElement.style.color = fuel < 25 ? 'red' : 'white';
+
     const altitude = bayraktar?.position.y || 0;
     dashboardElements.altitude.textContent = altitude.toFixed(1);
     const vspeed = (altitude - lastAltitude) * 60;
     dashboardElements.vspeed.textContent = vspeed.toFixed(1);
     lastAltitude = altitude;
+
     dashboardElements.pitch.textContent = '0';
     dashboardElements.speed.textContent = (throttle * 1.5).toFixed(0);
     dashboardElements.heading.textContent = heading.toFixed(0);
@@ -238,28 +243,37 @@
 
   function animate() {
     requestAnimationFrame(animate);
-    controls.enabled = (cameraMode === 2);
     controls.update();
-
-    if (bayraktar) {
-      if (cameraMode === 1) {
-        const behind = new THREE.Vector3(0, 1, 8).applyMatrix4(bayraktar.matrixWorld);
-        camera.position.lerp(behind, 0.1);
-        camera.lookAt(bayraktar.position);
-      } else if (cameraMode === 3) {
-        camera.position.copy(bayraktar.position).add(new THREE.Vector3(0, 10, 0));
-        camera.lookAt(bayraktar.position);
-      }
-    }
-
-    if (propeller && engineStarted) {
-      propeller.rotation.y += 0.1 + rpm / 20000;
-    }
-
     renderer.render(scene, camera);
     drawHUD();
     updateDashboard();
+
+    if (propeller && engineRunning) {
+      propeller.rotation.y += 0.1 + rpm / 20000;
+    }
+
+    if (bayraktar) {
+      if (cameraMode === 1) {
+        const tailCam = new THREE.Vector3(0, 1.5, 2);
+        tailCam.applyMatrix4(bayraktar.matrixWorld);
+        camera.position.lerp(tailCam, 0.1);
+        const lookAtPoint = new THREE.Vector3();
+        bayraktar.getWorldPosition(lookAtPoint);
+        lookAtPoint.z -= 5;
+        camera.lookAt(lookAtPoint);
+      } else if (cameraMode === 2) {
+        const defaultPos = new THREE.Vector3(0, 2, 8);
+        camera.position.lerp(defaultPos, 0.1);
+        camera.lookAt(bayraktar.position);
+      } else if (cameraMode === 3) {
+        const topView = new THREE.Vector3(0, 10, 0);
+        topView.applyMatrix4(bayraktar.matrixWorld);
+        camera.position.lerp(topView, 0.1);
+        camera.lookAt(bayraktar.position);
+      }
+    }
   }
 </script>
 </body>
 </html>
+
