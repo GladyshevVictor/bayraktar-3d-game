@@ -97,9 +97,9 @@
   const textureLoader = new THREE.TextureLoader();
   textureLoader.load('zps.png', (texture) => {
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(1, 1);
+    texture.repeat.set(0.25, 1);
 
-    const runwayGeometry = new THREE.PlaneGeometry(800, 40);
+    const runwayGeometry = new THREE.PlaneGeometry(2000, 50);
     const runwayMaterial = new THREE.MeshStandardMaterial({ map: texture });
     const runway = new THREE.Mesh(runwayGeometry, runwayMaterial);
     runway.rotation.x = -Math.PI / 2;
