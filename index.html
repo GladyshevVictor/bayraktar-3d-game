@@ -14,14 +14,6 @@
       color: white;
       font-family: Arial;
     }
-    #progress {
-      position: absolute;
-      top: calc(50% + 30px);
-      left: 50%;
-      transform: translateX(-50%);
-      color: white;
-      font-family: Arial;
-    }
     #hud {
       position: absolute;
       top: 10px;
@@ -121,11 +113,7 @@
     if (e.key === 'r') {
       engineRunning = !engineRunning;
       if (engineRunning) startSound.play().then(() => engineSound.play());
-      else {
-        engineSound.pause();
-        throttle = 0;
-        rpm = 0;
-      }
+      else engineSound.pause();
     }
     if (e.key === 'w') throttle = Math.min(throttle + 5, 100);
     if (e.key === 's') throttle = Math.max(throttle - 5, 0);
@@ -207,12 +195,13 @@
     if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
     if (bayraktar) {
       if (cameraMode === 1) {
-        const tailOffset = new THREE.Vector3(0, 1.5, -5);
+        const tailOffset = new THREE.Vector3(0, 1.5, 5);
         tailOffset.applyMatrix4(bayraktar.matrixWorld);
         camera.position.lerp(tailOffset, 0.1);
-        const forward = new THREE.Vector3(0, 1.2, 0);
-        forward.applyMatrix4(bayraktar.matrixWorld);
-        camera.lookAt(forward);
+        const backward = new THREE.Vector3(0, 1.2, 0);
+        backward.applyMatrix4(bayraktar.matrixWorld);
+        backward.z -= 10;
+        camera.lookAt(backward);
       } else if (cameraMode === 2) {
         const defaultCam = new THREE.Vector3(0, 2, 8);
         camera.position.lerp(defaultCam, 0.1);
