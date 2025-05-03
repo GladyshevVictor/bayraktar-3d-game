@@ -103,6 +103,7 @@
     const runwayMaterial = new THREE.MeshStandardMaterial({ map: texture });
     const runway = new THREE.Mesh(runwayGeometry, runwayMaterial);
     runway.rotation.x = -Math.PI / 2;
+    runway.position.set(332.08, 0, 480.47);
     scene.add(runway);
   });
 
