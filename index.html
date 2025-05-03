@@ -194,13 +194,13 @@
     updateDashboard();
     if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
     if (bayraktar) {
-      if (cameraMode === 1) {
-        const tailOffset = new THREE.Vector3(0, 10, -10); // віддалено на 10м
-        tailOffset.applyMatrix4(bayraktar.matrixWorld);
-        camera.position.lerp(tailOffset, 0.1);
-        const forward = new THREE.Vector3(0, 0, 5);
-        forward.applyMatrix4(bayraktar.matrixWorld);
-        camera.lookAt(forward);
+     if (cameraMode === 1) {
+  const tailOffset = new THREE.Vector3(0, 20, -10);  // позиція камери
+  tailOffset.applyMatrix4(bayraktar.matrixWorld);
+  camera.position.lerp(tailOffset, 0.1);
+  const downward = new THREE.Vector3(0, -1, 0);  // напрямок вниз
+  downward.applyMatrix4(bayraktar.matrixWorld);
+  camera.lookAt(downward);
       } else if (cameraMode === 2) {
         const defaultCam = new THREE.Vector3(0, 2, 8);
         camera.position.lerp(defaultCam, 0.1);
