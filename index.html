@@ -80,7 +80,7 @@
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-  let scene, camera, renderer, controls, bayraktar, propeller;
+  let scene, camera, debugCamera, activeCamera, renderer, controls, bayraktar, propeller;
   let fuel = 100, throttle = 0, rpm = 0, engineRunning = false, isLanding = false;
   let cameraMode = 2, lastAltitude = 0;
 
@@ -120,18 +120,27 @@
     if (e.key === '1') cameraMode = 1;
     if (e.key === '2') cameraMode = 2;
     if (e.key === '3') cameraMode = 3;
+    if (e.key === '0') activeCamera = activeCamera === camera ? debugCamera : camera;
   });
   document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87ceeb);
+
   camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
   camera.position.set(0, 2, 8);
+
+  debugCamera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  debugCamera.position.set(10, 5, 10);
+  debugCamera.lookAt(0, 0, 0);
+
+  activeCamera = camera;
+
   renderer = new THREE.WebGLRenderer({antialias: true});
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  controls = new OrbitControls(camera, renderer.domElement);
+  controls = new OrbitControls(activeCamera, renderer.domElement);
   controls.target.set(0,1,0);
   controls.update();
 
@@ -190,21 +199,17 @@
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
-    renderer.render(scene, camera);
+    renderer.render(scene, activeCamera);
     updateDashboard();
     if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
-    if (bayraktar) {
-     if (cameraMode === 1) {
-  // Камера встановлюється трохи вище і позаду БПЛА
-  const tailOffset = new THREE.Vector3(0, 1.2, 5); // +5 по Z — це "з хвоста"
-  tailOffset.applyMatrix4(bayraktar.matrixWorld);
-  camera.position.lerp(tailOffset, 0.1);
-
-  // Погляд трохи вниз (опущений на ~5 градусів) — z менше, y нижче
-  const lookAtPoint = new THREE.Vector3(0, 0.8, 0); 
-  lookAtPoint.applyMatrix4(bayraktar.matrixWorld);
-  camera.lookAt(lookAtPoint);
-}
+    if (bayraktar && activeCamera === camera) {
+      if (cameraMode === 1) {
+        const tailOffset = new THREE.Vector3(0, 1.5, -5);
+        tailOffset.applyMatrix4(bayraktar.matrixWorld);
+        camera.position.lerp(tailOffset, 0.1);
+        const forward = new THREE.Vector3(0, 1.2, -5);
+        forward.applyMatrix4(bayraktar.matrixWorld);
+        camera.lookAt(forward);
       } else if (cameraMode === 2) {
         const defaultCam = new THREE.Vector3(0, 2, 8);
         camera.position.lerp(defaultCam, 0.1);
@@ -216,6 +221,7 @@
         camera.lookAt(bayraktar.position);
       }
     }
+  }
 </script>
 </body>
 </html>
