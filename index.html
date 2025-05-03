@@ -76,160 +76,160 @@
 <audio id="startSound" src="engine-start-86242.mp3"></audio>
 <audio id="missileSound" src="missile-firing-fl-106655.mp3"></audio>
 <script type="module">
-  import * as THREE from 'three';
-  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-  let scene, camera, renderer, controls, bayraktar, propeller;
-  let fuel = 100, throttle = 0, rpm = 0, engineRunning = false, isLanding = false;
-  let cameraMode = 2, lastAltitude = 0;
-  let heading = 0, pitch = 0, velocity = 0;
+let scene, camera, renderer, controls, bayraktar, propeller;
+let fuel = 100, throttle = 0, rpm = 0, engineRunning = false, isLanding = false;
+let cameraMode = 2, lastAltitude = 0;
+let pitchAngle = 0, heading = 0;
 
-  const clock = new THREE.Clock();
+const keys = {};
 
-  const hudCanvas = document.getElementById('hudCanvas');
-  const hudCtx = hudCanvas.getContext('2d');
-  function resizeHUD() {
-    hudCanvas.width = window.innerWidth;
-    hudCanvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resizeHUD);
-  resizeHUD();
+const hudCanvas = document.getElementById('hudCanvas');
+const hudCtx = hudCanvas.getContext('2d');
+function resizeHUD() {
+  hudCanvas.width = window.innerWidth;
+  hudCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeHUD);
+resizeHUD();
 
-  const engineSound = document.getElementById('engineSound');
-  const startSound = document.getElementById('startSound');
+const engineSound = document.getElementById('engineSound');
+const startSound = document.getElementById('startSound');
 
-  const dashboard = {
-    fuel: document.getElementById('fuel'),
-    altitude: document.getElementById('altitude'),
-    pitch: document.getElementById('pitch'),
-    speed: document.getElementById('speed'),
-    heading: document.getElementById('heading'),
-    vspeed: document.getElementById('vspeed'),
-    throttle: document.getElementById('throttle'),
-    rpm: document.getElementById('rpm')
-  };
+const dashboard = {
+  fuel: document.getElementById('fuel'),
+  altitude: document.getElementById('altitude'),
+  pitch: document.getElementById('pitch'),
+  speed: document.getElementById('speed'),
+  heading: document.getElementById('heading'),
+  vspeed: document.getElementById('vspeed'),
+  throttle: document.getElementById('throttle'),
+  rpm: document.getElementById('rpm')
+};
 
-  const keys = {};
-  document.addEventListener('keydown', (e) => {
-    keys[e.key.toLowerCase()] = true;
-    if (e.key === 'r') {
-      engineRunning = !engineRunning;
-      if (engineRunning) startSound.play().then(() => engineSound.play());
-      else engineSound.pause();
-    }
-    if (e.key === '1') cameraMode = 1;
-    if (e.key === '2') cameraMode = 2;
-    if (e.key === '3') cameraMode = 3;
+scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0, 2, 8);
+renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0,1,0);
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200,200), new THREE.MeshStandardMaterial({color: 0x224422}));
+ground.rotation.x = -Math.PI/2;
+scene.add(ground);
+
+const loader = new GLTFLoader();
+loader.load('bayraktar.glb', (gltf) => {
+  bayraktar = gltf.scene;
+  bayraktar.scale.set(0.03,0.03,0.03);
+  bayraktar.position.set(0,0.25,0);
+  bayraktar.traverse(child => {
+    if (child.isMesh && child.name.toLowerCase().includes('propeller')) propeller = child;
   });
-  document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+  scene.add(bayraktar);
+  document.getElementById('loading').style.display = 'none';
+  animate();
+}, (xhr) => {
+  const percent = Math.round((xhr.loaded / xhr.total) * 100);
+  document.getElementById('progress').textContent = percent + '%';
+});
 
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb);
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 2, 8);
-  renderer = new THREE.WebGLRenderer({antialias: true});
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
+document.addEventListener('keydown', (e) => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key === 'r') {
+    engineRunning = !engineRunning;
+    if (engineRunning) startSound.play().then(() => engineSound.play());
+    else engineSound.pause();
+  }
+  if (e.key === 'w') throttle = Math.min(throttle + 5, 100);
+  if (e.key === 's') throttle = Math.max(throttle - 5, 0);
+  if (e.key === 'arrowup') pitchAngle = Math.max(pitchAngle - 2, -30);
+  if (e.key === 'arrowdown') pitchAngle = Math.min(pitchAngle + 2, 30);
+  if (e.key === 'arrowleft') heading += 2;
+  if (e.key === 'arrowright') heading -= 2;
+  if (e.key === '1') cameraMode = 1;
+  if (e.key === '2') cameraMode = 2;
+  if (e.key === '3') cameraMode = 3;
+});
 
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0,1,0);
+document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+function updateDashboard() {
+  if (!isLanding && fuel > 0 && throttle > 0) fuel -= 0.01 * (throttle / 100);
+  dashboard.fuel.textContent = fuel.toFixed(1);
+  dashboard.fuel.parentElement.style.color = fuel < 25 ? 'red' : 'white';
+  const alt = bayraktar?.position.y || 0;
+  dashboard.altitude.textContent = alt.toFixed(1);
+  dashboard.vspeed.textContent = ((alt - lastAltitude) * 60).toFixed(1);
+  lastAltitude = alt;
+  dashboard.pitch.textContent = pitchAngle.toFixed(0);
+  dashboard.speed.textContent = (throttle * 1.5).toFixed(0);
+  dashboard.heading.textContent = heading.toFixed(0);
+  dashboard.throttle.textContent = throttle;
+  dashboard.rpm.textContent = rpm;
+
+  if (throttle === 0) rpm = 1600;
+  else if (throttle <= 20) rpm = 2200;
+  else if (throttle <= 40) rpm = 4600;
+  else if (throttle <= 60) rpm = 5000;
+  else if (throttle <= 80) rpm = 5300;
+  else if (throttle <= 90) rpm = 5500;
+  else rpm = 5650;
+
+  if (fuel <= 25 && !isLanding) autoLand();
+}
+
+function autoLand() {
+  isLanding = true;
+  throttle = 20;
+  rpm = 2200;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
   controls.update();
-
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444));
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(200,200), new THREE.MeshStandardMaterial({color: 0x224422}));
-  ground.rotation.x = -Math.PI/2;
-  scene.add(ground);
-
-  const loader = new GLTFLoader();
-  loader.load('bayraktar.glb', (gltf) => {
-    bayraktar = gltf.scene;
-    bayraktar.scale.set(0.03,0.03,0.03);
-    bayraktar.position.set(0,0.25,0);
-    bayraktar.traverse(child => {
-      if (child.isMesh && child.name.toLowerCase().includes('propeller')) propeller = child;
-    });
-    scene.add(bayraktar);
-    document.getElementById('loading').style.display = 'none';
-    animate();
-  }, (xhr) => {
-    const percent = Math.round((xhr.loaded / xhr.total) * 100);
-    document.getElementById('progress').textContent = percent + '%';
-  });
-
-  function updateDashboard(dt) {
-    if (!isLanding && fuel > 0 && throttle > 0) fuel -= 0.01 * (throttle / 100) * dt;
-    dashboard.fuel.textContent = fuel.toFixed(1);
-    dashboard.fuel.parentElement.style.color = fuel < 25 ? 'red' : 'white';
-    const alt = bayraktar?.position.y || 0;
-    dashboard.altitude.textContent = alt.toFixed(1);
-    dashboard.vspeed.textContent = ((alt - lastAltitude) * 60 / dt).toFixed(1);
-    lastAltitude = alt;
-    dashboard.pitch.textContent = pitch.toFixed(0);
-    dashboard.speed.textContent = (velocity * 100).toFixed(0);
-    dashboard.heading.textContent = heading.toFixed(0);
-    dashboard.throttle.textContent = throttle;
-    dashboard.rpm.textContent = rpm;
-
-    if (throttle === 0) rpm = 1600;
-    else if (throttle <= 20) rpm = 2200;
-    else if (throttle <= 40) rpm = 4600;
-    else if (throttle <= 60) rpm = 5000;
-    else if (throttle <= 80) rpm = 5300;
-    else if (throttle <= 90) rpm = 5500;
-    else rpm = 5650;
-
-    if (fuel <= 25 && !isLanding) autoLand();
+  renderer.render(scene, camera);
+  updateDashboard();
+  if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
+  if (bayraktar && engineRunning) {
+    const direction = new THREE.Vector3(
+      Math.sin(THREE.MathUtils.degToRad(heading)),
+      Math.sin(THREE.MathUtils.degToRad(pitchAngle)),
+      Math.cos(THREE.MathUtils.degToRad(heading))
+    );
+    direction.multiplyScalar(throttle / 500);
+    bayraktar.position.add(direction);
+    bayraktar.rotation.y = -THREE.MathUtils.degToRad(heading);
   }
-
-  function autoLand() {
-    isLanding = true;
-    throttle = 20;
-    rpm = 2200;
-  }
-
-  function moveBayraktar(dt) {
-    if (!bayraktar || !engineRunning) return;
-
-    if (keys['w']) throttle = Math.min(throttle + 10 * dt, 100);
-    if (keys['s']) throttle = Math.max(throttle - 10 * dt, 0);
-    if (keys['q']) heading += 60 * dt;
-    if (keys['e']) heading -= 60 * dt;
-
-    velocity = throttle / 100 * 0.1;
-    const rad = THREE.MathUtils.degToRad(heading);
-    bayraktar.rotation.y = rad;
-    bayraktar.translateZ(-velocity);
-  }
-
-  function animate() {
-    const dt = clock.getDelta();
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-    updateDashboard(dt);
-    moveBayraktar(dt);
-    if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
-
-    if (bayraktar) {
-      if (cameraMode === 1) {
-        const tailOffset = new THREE.Vector3(0, 5, -10);
-        tailOffset.applyMatrix4(bayraktar.matrixWorld);
-        camera.position.lerp(tailOffset, 0.1);
-        const lookAt = new THREE.Vector3(0, 0, 10).applyMatrix4(bayraktar.matrixWorld);
-        camera.lookAt(lookAt);
-      } else if (cameraMode === 2) {
-        const defaultCam = new THREE.Vector3(0, 2, 8);
-        camera.position.lerp(defaultCam, 0.1);
-        camera.lookAt(bayraktar.position);
-      } else if (cameraMode === 3) {
-        const topCam = new THREE.Vector3(0, 10, 0);
-        topCam.applyMatrix4(bayraktar.matrixWorld);
-        camera.position.lerp(topCam, 0.1);
-        camera.lookAt(bayraktar.position);
-      }
+  if (bayraktar) {
+    if (cameraMode === 1) {
+      const tailOffset = new THREE.Vector3(0, 1.5, -5);
+      tailOffset.applyMatrix4(bayraktar.matrixWorld);
+      camera.position.lerp(tailOffset, 0.1);
+      const forward = new THREE.Vector3(0, 1.2, 0);
+      forward.applyMatrix4(bayraktar.matrixWorld);
+      camera.lookAt(forward);
+    } else if (cameraMode === 2) {
+      const defaultCam = new THREE.Vector3(0, 2, 8);
+      camera.position.lerp(defaultCam, 0.1);
+      camera.lookAt(bayraktar.position);
+    } else if (cameraMode === 3) {
+      const topCam = new THREE.Vector3(0, 10, 0);
+      topCam.applyMatrix4(bayraktar.matrixWorld);
+      camera.position.lerp(topCam, 0.1);
+      camera.lookAt(bayraktar.position);
     }
   }
+}
 </script>
 </body>
 </html>
