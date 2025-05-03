@@ -14,6 +14,14 @@
       color: white;
       font-family: Arial;
     }
+    #progress {
+      position: absolute;
+      top: calc(50% + 30px);
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-family: Arial;
+    }
     #hud {
       position: absolute;
       top: 10px;
@@ -113,7 +121,11 @@
     if (e.key === 'r') {
       engineRunning = !engineRunning;
       if (engineRunning) startSound.play().then(() => engineSound.play());
-      else engineSound.pause();
+      else {
+        engineSound.pause();
+        throttle = 0;
+        rpm = 0;
+      }
     }
     if (e.key === 'w') throttle = Math.min(throttle + 5, 100);
     if (e.key === 's') throttle = Math.max(throttle - 5, 0);
