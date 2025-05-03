@@ -106,12 +106,30 @@
   resizeHUD();
 
   document.addEventListener('keydown', (event) => {
-    keys[event.key.toLowerCase()] = true;
-    if (event.key.toLowerCase() === 'r') {
+    const key = event.key.toLowerCase();
+    keys[key] = true;
+
+    if (key === 'r') {
       startSound.play().then(() => {
         engineSound.play();
       });
     }
+
+    if (key === 'w') {
+      throttle = Math.min(throttle + 5, 100);
+    } else if (key === 's') {
+      throttle = Math.max(throttle - 5, 0);
+    }
+
+    if (throttle === 0) rpm = 1600;
+    else if (throttle <= 20) rpm = 2200;
+    else if (throttle <= 40) rpm = 4600;
+    else if (throttle <= 60) rpm = 5000;
+    else if (throttle <= 80) rpm = 5300;
+    else if (throttle <= 90) rpm = 5500;
+    else rpm = 5650;
+
+    if (fuel <= 25 && !isLanding) autoLand();
   });
 
   document.addEventListener('keyup', (event) => {
@@ -188,15 +206,34 @@
   );
 
   function updateDashboard() {
-    // [...] логіка приладової панелі залишилася без змін
+    if (!isLanding && fuel > 0 && throttle > 0) {
+      fuel -= 0.01 * (throttle / 100);
+    }
+    dashboardElements.fuel.textContent = fuel.toFixed(1);
+    dashboardElements.fuel.parentElement.style.color = fuel < 25 ? 'red' : 'white';
+
+    const altitude = bayraktar?.position.y || 0;
+    dashboardElements.altitude.textContent = altitude.toFixed(1);
+    const vspeed = (altitude - lastAltitude) * 60;
+    dashboardElements.vspeed.textContent = vspeed.toFixed(1);
+    lastAltitude = altitude;
+
+    dashboardElements.pitch.textContent = '0';
+    dashboardElements.speed.textContent = (throttle * 1.5).toFixed(0);
+    dashboardElements.heading.textContent = heading.toFixed(0);
+    dashboardElements.throttle.textContent = throttle;
+    dashboardElements.rpm.textContent = rpm;
   }
 
   function autoLand() {
-    // [...] автопосадка
+    isLanding = true;
+    throttle = 20;
+    rpm = 2200;
+    console.warn("⚠️ Автоматична посадка активована через низький рівень пального");
   }
 
   function drawHUD() {
-    // [...] отрисовка HUD
+    hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
   }
 
   function animate() {
