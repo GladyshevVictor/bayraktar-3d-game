@@ -194,15 +194,15 @@
     updateDashboard();
     if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
     if (bayraktar) {
-   if (cameraMode === 1 && bayraktar) {
-  const tailPosition = new THREE.Vector3(0, 2, -10);  // позаду і вище
-  const lookForward = new THREE.Vector3(0, 1, 10);    // точка вперед
-  // Перетворюємо локальні координати в глобальні
-  bayraktar.updateMatrixWorld();
-  const globalTail = tailPosition.applyMatrix4(bayraktar.matrixWorld);
-  const globalLook = lookForward.applyMatrix4(bayraktar.matrixWorld);
-  camera.position.copy(globalTail);   // фіксована камера
-  camera.lookAt(globalLook);         // дивиться вперед
+  if (cameraMode === 1) {
+  // Жорстка фіксована позиція камери
+  const tailOffset = new THREE.Vector3(0, 3, -10); // Піднята й трохи позаду
+  const worldTail = tailOffset.applyMatrix4(bayraktar.matrixWorld);
+  camera.position.copy(worldTail);
+  // Камера дивиться в центр БпЛА
+  const target = new THREE.Vector3();
+  bayraktar.getWorldPosition(target);
+  camera.lookAt(target);
       } else if (cameraMode === 2) {
         const defaultCam = new THREE.Vector3(0, 2, 8);
         camera.position.lerp(defaultCam, 0.1);
