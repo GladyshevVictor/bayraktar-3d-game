@@ -213,7 +213,7 @@
         camera.position.lerp(defaultCam, 0.1);
         camera.lookAt(bayraktar.position);
       } else if (cameraMode === 3) {
-        const topCam = new THREE.Vector3(0, 20, 20);
+        const topCam = new THREE.Vector3(0, 80, 20);
         topCam.applyMatrix4(bayraktar.matrixWorld);
         camera.position.lerp(topCam, 0.1);
         camera.lookAt(bayraktar.position);
