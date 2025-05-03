@@ -195,7 +195,7 @@
     if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
     if (bayraktar) {
       if (cameraMode === 1) {
-        const tailOffset = new THREE.Vector3(0, 20, -10); // віддалено на 10м
+        const tailOffset = new THREE.Vector3(0, 10, -10); // віддалено на 10м
         tailOffset.applyMatrix4(bayraktar.matrixWorld);
         camera.position.lerp(tailOffset, 0.1);
         const forward = new THREE.Vector3(0, 1.2, 0);
