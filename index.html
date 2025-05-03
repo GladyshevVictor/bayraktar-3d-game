@@ -186,9 +186,10 @@ function updateMissiles() {
 function updateCamera() {
   if (!bayraktar) return;
   if (cameraMode === 1) {
-    const tail = new THREE.Vector3(0, 1, 4).applyMatrix4(bayraktar.matrixWorld);
-    camera.position.lerp(tail, 0.1);
-    camera.lookAt(bayraktar.position);
+    const tailPosition = new THREE.Vector3(0, 1.5, 4).applyMatrix4(bayraktar.matrixWorld); // Вгору і ззаду
+    const lookAtPosition = new THREE.Vector3(0, 1, 0).applyMatrix4(bayraktar.matrixWorld); // Зорієнтувати камеру на центр
+    camera.position.lerp(tailPosition, 0.1);
+    camera.lookAt(lookAtPosition);
   } else if (cameraMode === 2) {
     const behind = new THREE.Vector3(0, 2, 8).applyMatrix4(bayraktar.matrixWorld);
     camera.position.lerp(behind, 0.1);
