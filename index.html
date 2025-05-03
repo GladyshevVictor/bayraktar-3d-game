@@ -199,7 +199,7 @@
 
     if (bayraktar) {
       if (cameraMode === 1) {
-        const offset = new THREE.Vector3(0, 1.5, -8); // 10m back
+        const offset = new THREE.Vector3(0, 1.5, -7); // 10m back
         offset.applyMatrix4(bayraktar.matrixWorld);
         camera.position.lerp(offset, 0.1);
         const lookAt = new THREE.Vector3(0, 1.5, 0);
