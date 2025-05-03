@@ -194,13 +194,14 @@
     updateDashboard();
     if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
     if (bayraktar) {
-     if (cameraMode === 1) {
-  const tailOffset = new THREE.Vector3(0, 20, -10);  // позиція камери
-  tailOffset.applyMatrix4(bayraktar.matrixWorld);
-  camera.position.lerp(tailOffset, 0.1);
-  const downward = new THREE.Vector3(0, -1, 0);  // напрямок вниз
-  downward.applyMatrix4(bayraktar.matrixWorld);
-  camera.lookAt(downward);
+    if (cameraMode === 1) {
+  const cameraOffset = new THREE.Vector3(0, 20, -10);
+  cameraOffset.applyMatrix4(bayraktar.matrixWorld);
+  camera.position.lerp(cameraOffset, 0.1);
+  const target = new THREE.Vector3();
+  bayraktar.getWorldPosition(target);
+  target.y -= 5; // дивитися на 5 метрів нижче відносно центру БпЛА
+  camera.lookAt(target);
       } else if (cameraMode === 2) {
         const defaultCam = new THREE.Vector3(0, 2, 8);
         camera.position.lerp(defaultCam, 0.1);
