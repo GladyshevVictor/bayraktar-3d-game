@@ -24,20 +24,6 @@
       width: 200px;
     }
     #dashboard span { display: block; text-align: right; }
-    #hudCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-    }
-    .hud-box {
-      position: absolute;
-      color: lime;
-      font-family: monospace;
-      font-size: 14px;
-    }
-    .hud-box.speed { top: 40%; left: 30px; }
-    .hud-box.altitude { top: 40%; right: 30px; }
   </style>
   <script type="importmap">
     {
@@ -64,22 +50,22 @@
 </div>
 <audio id="engineSound" src="diesel-drive-by-3-mz000007-47135.mp3" loop></audio>
 <audio id="startSound" src="engine-start-86242.mp3"></audio>
-<audio id="missileSound" src="missile-firing-fl-106655.mp3"></audio>
 <script type="module">
   import * as THREE from 'three';
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
   let scene, camera, renderer, controls, bayraktar;
-  let propellers = [];
   let score = 0;
-  let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
+  let keys = {}, missiles = [], targets = [], cameraMode = 3;
   let lastAltitude = 0;
   let fuel = 100;
   let isLanding = false;
   let heading = 0;
   let throttle = 0;
   let rpm = 0;
+  let engineRunning = false;
+  let propellers = [], propellerSpeed = 0;
 
   const engineSound = document.getElementById('engineSound');
   const startSound = document.getElementById('startSound');
@@ -95,31 +81,25 @@
     rpm: document.getElementById('rpm')
   };
 
-  const hudCanvas = document.getElementById('hudCanvas');
-  const hudCtx = hudCanvas.getContext('2d');
-
-  function resizeHUD() {
-    hudCanvas.width = window.innerWidth;
-    hudCanvas.height = window.innerHeight;
-  }
-
-  window.addEventListener('resize', resizeHUD);
-  resizeHUD();
-
   document.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
     keys[key] = true;
 
     if (key === 'r') {
-      startSound.play().then(() => {
-        engineSound.play();
-      });
+      engineRunning = !engineRunning;
+      if (engineRunning) {
+        startSound.play().then(() => engineSound.play());
+      } else {
+        engineSound.pause();
+        engineSound.currentTime = 0;
+        throttle = 0;
+        rpm = 0;
+      }
     }
 
-    if (key === 'w') {
-      throttle = Math.min(throttle + 5, 100);
-    } else if (key === 's') {
-      throttle = Math.max(throttle - 5, 0);
+    if (engineRunning) {
+      if (key === 'w') throttle = Math.min(throttle + 5, 100);
+      if (key === 's') throttle = Math.max(throttle - 5, 0);
     }
 
     if (throttle === 0) rpm = 1600;
@@ -163,48 +143,23 @@
   controls.target.set(0, 1, 0);
   controls.update();
 
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(200, 200),
-    new THREE.MeshStandardMaterial({ color: 0x224422 })
-  );
-  ground.rotation.x = -Math.PI / 2;
-  scene.add(ground);
-
-  const runway = new THREE.Mesh(
-    new THREE.PlaneGeometry(10, 80),
-    new THREE.MeshStandardMaterial({ color: 0x333333 })
-  );
-  runway.rotation.x = -Math.PI / 2;
-  runway.position.z = -40;
-  scene.add(runway);
-
   const loader = new GLTFLoader();
-  loader.load('bayraktar.glb',
-    function (gltf) {
-      bayraktar = gltf.scene;
-      bayraktar.scale.set(0.03, 0.03, 0.03);
-      bayraktar.rotation.y = 0;
-      bayraktar.position.set(0, 0.25, 0);
-      bayraktar.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-          child.material.side = THREE.DoubleSide;
-          if (child.name.toLowerCase().includes('propeller')) {
-            propellers.push(child);
-          }
-        }
-      });
-      scene.add(bayraktar);
-      camera.lookAt(bayraktar.position);
-      document.getElementById('loading').style.display = 'none';
-      animate();
-    },
-    undefined,
-    function (error) {
-      console.error('❌ Помилка завантаження моделі Bayraktar:', error);
-    }
-  );
+  loader.load('bayraktar.glb', (gltf) => {
+    bayraktar = gltf.scene;
+    bayraktar.scale.set(0.03, 0.03, 0.03);
+    bayraktar.position.set(0, 0.25, 0);
+    bayraktar.traverse(child => {
+      if (child.isMesh) {
+        if (child.name.toLowerCase().includes('propeller')) propellers.push(child);
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.material.side = THREE.DoubleSide;
+      }
+    });
+    scene.add(bayraktar);
+    document.getElementById('loading').style.display = 'none';
+    animate();
+  });
 
   function updateDashboard() {
     if (!isLanding && fuel > 0 && throttle > 0) {
@@ -212,13 +167,11 @@
     }
     dashboardElements.fuel.textContent = fuel.toFixed(1);
     dashboardElements.fuel.parentElement.style.color = fuel < 25 ? 'red' : 'white';
-
-    const altitude = bayraktar?.position.y || 0;
-    dashboardElements.altitude.textContent = altitude.toFixed(1);
-    const vspeed = (altitude - lastAltitude) * 60;
-    dashboardElements.vspeed.textContent = vspeed.toFixed(1);
-    lastAltitude = altitude;
-
+    const alt = bayraktar?.position.y || 0;
+    dashboardElements.altitude.textContent = alt.toFixed(1);
+    const vs = (alt - lastAltitude) * 60;
+    dashboardElements.vspeed.textContent = vs.toFixed(1);
+    lastAltitude = alt;
     dashboardElements.pitch.textContent = '0';
     dashboardElements.speed.textContent = (throttle * 1.5).toFixed(0);
     dashboardElements.heading.textContent = heading.toFixed(0);
@@ -230,23 +183,19 @@
     isLanding = true;
     throttle = 20;
     rpm = 2200;
-    console.warn("⚠️ Автоматична посадка активована через низький рівень пального");
-  }
-
-  function drawHUD() {
-    hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
   }
 
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
-    drawHUD();
     updateDashboard();
 
-    if (propellers.length > 0 && rpm > 0) {
+    if (propellers.length > 0) {
+      const targetSpeed = engineRunning ? (0.1 + rpm / 20000) : 0;
+      propellerSpeed += (targetSpeed - propellerSpeed) * 0.05;
       for (let p of propellers) {
-        p.rotation.y += 0.1 + rpm / 20000;
+        p.rotation.y += propellerSpeed;
       }
     }
   }
