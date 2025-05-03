@@ -141,7 +141,7 @@
   const zpsTexture = textureLoader.load('zps.png');
   zpsTexture.wrapS = THREE.RepeatWrapping;
   zpsTexture.wrapT = THREE.RepeatWrapping;
-  zpsTexture.repeat.set(0.01, 2.5);
+  zpsTexture.repeat.set(0, 1);
   const zpsMaterial = new THREE.MeshStandardMaterial({ map: zpsTexture });
   const zpsPlane = new THREE.Mesh(new THREE.PlaneGeometry(50, 1300), zpsMaterial);
   zpsPlane.rotation.x = -Math.PI / 2;
