@@ -78,66 +78,52 @@
 <script type="module">
   import * as THREE from 'three';
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-  let scene, camera, renderer, bayraktar, propeller;
-  let fuel = 100, throttle = 0, rpm = 0, engineRunning = false, isLanding = false;
-  let lastAltitude = 0;
-  const keys = {};
+  let scene, camera, renderer, controls, bayraktar, propeller;
 
   const hudCanvas = document.getElementById('hudCanvas');
   const hudCtx = hudCanvas.getContext('2d');
-  hudCanvas.width = window.innerWidth;
-  hudCanvas.height = window.innerHeight;
-
-  window.addEventListener('resize', () => {
+  function resizeHUD() {
     hudCanvas.width = window.innerWidth;
     hudCanvas.height = window.innerHeight;
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-
-  const engineSound = document.getElementById('engineSound');
-  const startSound = document.getElementById('startSound');
-
-  const dashboard = {
-    fuel: document.getElementById('fuel'),
-    altitude: document.getElementById('altitude'),
-    pitch: document.getElementById('pitch'),
-    speed: document.getElementById('speed'),
-    heading: document.getElementById('heading'),
-    vspeed: document.getElementById('vspeed'),
-    throttle: document.getElementById('throttle'),
-    rpm: document.getElementById('rpm')
-  };
-
-  document.addEventListener('keydown', (e) => {
-    keys[e.key.toLowerCase()] = true;
-    if (e.key === 'r') {
-      engineRunning = !engineRunning;
-      if (engineRunning) startSound.play().then(() => engineSound.play());
-      else engineSound.pause();
-    }
-    if (e.key === 'w') throttle = Math.min(throttle + 5, 100);
-    if (e.key === 's') throttle = Math.max(throttle - 5, 0);
-  });
-  document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+  }
+  window.addEventListener('resize', resizeHUD);
+  resizeHUD();
 
   scene = new THREE.Scene();
-  const skyColor = new THREE.Color(0x87ceeb);
-  scene.background = skyColor;
+  scene.background = new THREE.Color(0x87ceeb); // небесно-блакитний фон
 
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 3000);
+  camera.position.set(0, 2, 8);
+
   renderer = new THREE.WebGLRenderer({antialias: true});
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  const light = new THREE.HemisphereLight(0xffffff, 0x444444);
-  scene.add(light);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0,1,0);
+  controls.update();
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(200,200), new THREE.MeshStandardMaterial({color: 0x224422}));
-  ground.rotation.x = -Math.PI/2;
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444);
+  scene.add(hemiLight);
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x224422 }));
+  ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
+
+  const textureLoader = new THREE.TextureLoader();
+  const zpsTexture = textureLoader.load('zps.png');
+  zpsTexture.wrapS = THREE.ClampToEdgeWrapping;
+  zpsTexture.wrapT = THREE.ClampToEdgeWrapping;
+  zpsTexture.anisotropy = 16;
+
+  const zpsMaterial = new THREE.MeshStandardMaterial({ map: zpsTexture });
+  const zpsGeometry = new THREE.PlaneGeometry(50, 2000);
+  const zps = new THREE.Mesh(zpsGeometry, zpsMaterial);
+  zps.rotation.x = -Math.PI / 2;
+  zps.position.set(0, 0.02, -1000);
+  scene.add(zps);
 
   const loader = new GLTFLoader();
   loader.load('bayraktar.glb', (gltf) => {
@@ -155,52 +141,10 @@
     document.getElementById('progress').textContent = percent + '%';
   });
 
-  function updateDashboard() {
-    if (!isLanding && fuel > 0 && throttle > 0) fuel -= 0.01 * (throttle / 100);
-    dashboard.fuel.textContent = fuel.toFixed(1);
-    dashboard.fuel.parentElement.style.color = fuel < 25 ? 'red' : 'white';
-    const alt = bayraktar?.position.y || 0;
-    dashboard.altitude.textContent = alt.toFixed(1);
-    dashboard.vspeed.textContent = ((alt - lastAltitude) * 60).toFixed(1);
-    lastAltitude = alt;
-    dashboard.pitch.textContent = '0';
-    dashboard.speed.textContent = (throttle * 1.5).toFixed(0);
-    dashboard.heading.textContent = '0';
-    dashboard.throttle.textContent = throttle;
-    dashboard.rpm.textContent = rpm;
-
-    if (throttle === 0) rpm = 1600;
-    else if (throttle <= 20) rpm = 2200;
-    else if (throttle <= 40) rpm = 4600;
-    else if (throttle <= 60) rpm = 5000;
-    else if (throttle <= 80) rpm = 5300;
-    else if (throttle <= 90) rpm = 5500;
-    else rpm = 5650;
-
-    if (fuel <= 25 && !isLanding) autoLand();
-  }
-
-  function autoLand() {
-    isLanding = true;
-    throttle = 20;
-    rpm = 2200;
-  }
-
   function animate() {
     requestAnimationFrame(animate);
-    updateDashboard();
-    if (propeller && engineRunning) propeller.rotation.y += 0.1 + rpm / 20000;
-
-    if (bayraktar) {
-      const camOffset = new THREE.Vector3(0, 1.5, -6.8);
-      camOffset.applyMatrix4(bayraktar.matrixWorld);
-      camera.position.lerp(camOffset, 0.1);
-      const forward = new THREE.Vector3(0, 1.5, 2);
-      forward.applyMatrix4(bayraktar.matrixWorld);
-      camera.lookAt(forward);
-    }
-
     renderer.render(scene, camera);
+    controls.update();
   }
 </script>
 </body>
