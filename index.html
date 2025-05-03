@@ -70,7 +70,8 @@
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-  let scene, camera, renderer, controls, bayraktar, propeller;
+  let scene, camera, renderer, controls, bayraktar;
+  let propellers = [];
   let score = 0;
   let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
   let lastAltitude = 0;
@@ -190,7 +191,7 @@
           child.receiveShadow = true;
           child.material.side = THREE.DoubleSide;
           if (child.name.toLowerCase().includes('propeller')) {
-            propeller = child;
+            propellers.push(child);
           }
         }
       });
@@ -243,8 +244,10 @@
     drawHUD();
     updateDashboard();
 
-    if (propeller && rpm > 0) {
-      propeller.rotation.y += 0.1 + rpm / 20000;
+    if (propellers.length > 0 && rpm > 0) {
+      for (let p of propellers) {
+        p.rotation.y += 0.1 + rpm / 20000;
+      }
     }
   }
 </script>
