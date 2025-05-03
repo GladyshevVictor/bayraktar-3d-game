@@ -78,7 +78,6 @@
 <script type="module">
   import * as THREE from 'three';
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
   let scene, camera, renderer;
   scene = new THREE.Scene();
@@ -94,18 +93,7 @@
   const light = new THREE.HemisphereLight(0xffffff, 0x444444);
   scene.add(light);
 
-  const textureLoader = new THREE.TextureLoader();
-  textureLoader.load('zps.png', (texture) => {
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(0.25, 1);
-
-    const runwayGeometry = new THREE.PlaneGeometry(2000, 50);
-    const runwayMaterial = new THREE.MeshStandardMaterial({ map: texture });
-    const runway = new THREE.Mesh(runwayGeometry, runwayMaterial);
-    runway.rotation.x = -Math.PI / 2;
-    runway.position.set(332.08, 0, 480.47);
-    scene.add(runway);
-  });
+  // Видалено runway із zps.png, так як текстура більше недоступна
 
   function animate() {
     requestAnimationFrame(animate);
