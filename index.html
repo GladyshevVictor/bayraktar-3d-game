@@ -19,7 +19,7 @@
   </script>
 </head>
 <body>
-<div id="loading">Завантаження моделі Bayraktar...</div>
+<div id="loading">Завантаження моделі Bayraktar: 0%</div>
 <div id="hud">Цілі знищено: <span id="score">0</span></div>
 <audio id="engineSound" src="diesel-drive-by-3-mz000007-47135.mp3" loop></audio>
 <audio id="startSound" src="engine-start-86242.mp3"></audio>
@@ -29,8 +29,8 @@
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-  let scene, camera, renderer, controls, bayraktar, propeller, score = 0;
-  let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 2;
+  let scene, camera, renderer, controls, bayraktar, score = 0;
+  let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x202840);
@@ -39,6 +39,7 @@
   camera.position.set(0, 2, 8);
 
   const light = new THREE.HemisphereLight(0xffffff, 0x444444);
+  light.position.set(0, 20, 0);
   scene.add(light);
 
   const dirLight = new THREE.DirectionalLight(0xffffff);
@@ -73,20 +74,34 @@
   scene.add(runway);
 
   const loader = new GLTFLoader();
-  loader.load('baykar_bayraktar_tb2.glb', (gltf) => {
-    bayraktar = gltf.scene;
-    bayraktar.scale.set(0.03, 0.03, 0.03);
-    bayraktar.position.set(0, 0.25, 0);
-    bayraktar.traverse((child) => {
-      if (child.isMesh && child.name.toLowerCase().includes('prop')) {
-        propeller = child;
+  loader.load('baykar_bayraktar_tb2.glb',
+    function (gltf) {
+      bayraktar = gltf.scene;
+      bayraktar.scale.set(0.03, 0.03, 0.03);
+      bayraktar.rotation.y = 0;
+      bayraktar.position.set(0, 0.25, 0);
+      bayraktar.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          child.material.side = THREE.DoubleSide;
+        }
+      });
+      scene.add(bayraktar);
+      camera.lookAt(bayraktar.position);
+      document.getElementById('loading').style.display = 'none';
+      spawnTargets();
+    },
+    function (xhr) {
+      if (xhr.lengthComputable) {
+        const percent = Math.round((xhr.loaded / xhr.total) * 100);
+        document.getElementById('loading').textContent = `Завантаження моделі Bayraktar: ${percent}%`;
       }
-    });
-    scene.add(bayraktar);
-    camera.lookAt(bayraktar.position);
-    document.getElementById('loading').style.display = 'none';
-    spawnTargets();
-  });
+    },
+    function (error) {
+      console.error('❌ Помилка завантаження моделі Bayraktar:', error);
+    }
+  );
 
   function spawnTargets() {
     for (let i = 0; i < 10; i++) {
@@ -106,103 +121,8 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  window.addEventListener('keydown', (e) => {
-    if (e.key === '1') cameraMode = 1;
-    if (e.key === '2') cameraMode = 2;
-    if (e.key === '3') cameraMode = 3;
-    if (e.key.toLowerCase() === 'r') {
-      hasTakenOff = !hasTakenOff;
-      const engineSound = document.getElementById('engineSound');
-      const startSound = document.getElementById('startSound');
-      if (hasTakenOff) {
-        startSound.play();
-        engineSound.play();
-      } else {
-        engineSound.pause();
-        engineSound.currentTime = 0;
-      }
-    }
-    keys[e.key.toLowerCase()] = true;
-    if (e.key === ' ' && hasTakenOff) shootMissile();
-  });
-
-  window.addEventListener('keyup', (e) => {
-    keys[e.key.toLowerCase()] = false;
-  });
-
-  function moveBayraktar() {
-    if (!bayraktar || !hasTakenOff) return;
-    const speed = 0.05;
-    if (keys['w']) bayraktar.translateZ(-speed);
-    if (keys['s']) bayraktar.translateZ(speed);
-    if (keys['a']) bayraktar.translateX(-speed);
-    if (keys['d']) bayraktar.translateX(speed);
-    if (keys['q']) bayraktar.rotation.y += 0.03;
-    if (keys['e']) bayraktar.rotation.y -= 0.03;
-  }
-
-  function shootMissile() {
-    const missile = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.02, 0.02, 0.5),
-      new THREE.MeshBasicMaterial({ color: 0xff0000 })
-    );
-    missile.rotation.x = Math.PI / 2;
-    missile.position.set(
-      bayraktar.position.x,
-      bayraktar.position.y,
-      bayraktar.position.z - 0.5
-    );
-    scene.add(missile);
-    missiles.push(missile);
-    const snd = document.getElementById('missileSound');
-    snd.currentTime = 0;
-    snd.play();
-  }
-
-  function updateMissiles() {
-    missiles.forEach((missile, i) => {
-      missile.position.z -= 0.2;
-      targets.forEach((target, j) => {
-        if (missile.position.distanceTo(target.position) < 0.5) {
-          scene.remove(target);
-          scene.remove(missile);
-          targets.splice(j, 1);
-          missiles.splice(i, 1);
-          score++;
-          document.getElementById('score').textContent = score;
-        }
-      });
-      if (missile.position.z < -200) {
-        scene.remove(missile);
-        missiles.splice(i, 1);
-      }
-    });
-  }
-
   function animate() {
     requestAnimationFrame(animate);
-    if (hasTakenOff && propeller) {
-      propeller.rotation.z -= 0.3;
-    }
-    if (bayraktar) {
-      if (cameraMode === 1) {
-        const tailCam = new THREE.Vector3(0, 1.2, 2);
-        tailCam.applyMatrix4(bayraktar.matrixWorld);
-        camera.position.lerp(tailCam, 0.1);
-        camera.lookAt(bayraktar.position);
-      } else if (cameraMode === 2) {
-        const followCam = new THREE.Vector3(0, 2, 8);
-        followCam.applyMatrix4(bayraktar.matrixWorld);
-        camera.position.lerp(followCam, 0.1);
-        camera.lookAt(bayraktar.position);
-      } else if (cameraMode === 3) {
-        controls.enabled = true;
-        controls.target.copy(bayraktar.position);
-        controls.update();
-      }
-    }
-    moveBayraktar();
-    updateMissiles();
     renderer.render(scene, camera);
   }
 
