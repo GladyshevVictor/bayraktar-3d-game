@@ -84,7 +84,8 @@
   scene.background = new THREE.Color(0x202840);
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 100, 300);
+  camera.position.set(0, 150, 300);
+  camera.lookAt(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -93,14 +94,14 @@
   const light = new THREE.HemisphereLight(0xffffff, 0x444444);
   scene.add(light);
 
-  // Додано runway із дефолтною текстурою для покриття
+  // Додано runway з оновленою текстурою
   const loader = new THREE.TextureLoader();
-  const runwayTexture = loader.load('runway_texture.jpg');
-  runwayTexture.wrapS = runwayTexture.wrapT = THREE.RepeatWrapping;
-  runwayTexture.repeat.set(4, 1);
+  const runwayTexture = loader.load('runway_texture.png');
+  runwayTexture.wrapS = runwayTexture.wrapT = THREE.ClampToEdgeWrapping;
+  runwayTexture.anisotropy = 16;
 
   const runway = new THREE.Mesh(
-    new THREE.PlaneGeometry(400, 100),
+    new THREE.PlaneGeometry(800, 150),
     new THREE.MeshStandardMaterial({ map: runwayTexture })
   );
   runway.rotation.x = -Math.PI / 2;
