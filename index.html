@@ -198,7 +198,7 @@
         const tailOffset = new THREE.Vector3(0, 10, -10); // віддалено на 10м
         tailOffset.applyMatrix4(bayraktar.matrixWorld);
         camera.position.lerp(tailOffset, 0.1);
-        const forward = new THREE.Vector3(0, 2, 0);
+        const forward = new THREE.Vector3(1, 2, 0);
         forward.applyMatrix4(bayraktar.matrixWorld);
         camera.lookAt(forward);
       } else if (cameraMode === 2) {
