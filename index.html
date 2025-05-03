@@ -72,14 +72,14 @@
 
   let scene, camera, renderer, controls, bayraktar, propeller;
   let score = 0;
-  let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 3;
+  let keys = {}, missiles = [], targets = [], hasTakenOff = false, cameraMode = 2;
   let lastAltitude = 0;
   let fuel = 100;
   let isLanding = false;
   let heading = 0;
   let throttle = 0;
   let rpm = 0;
-  let engineRunning = false;
+  let engineStarted = false;
 
   const engineSound = document.getElementById('engineSound');
   const startSound = document.getElementById('startSound');
@@ -111,39 +111,31 @@
     keys[key] = true;
 
     if (key === 'r') {
-      if (!engineRunning) {
-        startSound.play().then(() => {
-          engineSound.play();
-          engineRunning = true;
-        });
+      if (!engineStarted) {
+        startSound.play().then(() => engineSound.play());
+        engineStarted = true;
       } else {
         engineSound.pause();
-        engineSound.currentTime = 0;
-        engineRunning = false;
+        engineStarted = false;
         throttle = 0;
         rpm = 0;
       }
     }
 
-    if (key === '1') {
-      cameraMode = 1;
-    }
+    if (key === 'w') throttle = Math.min(throttle + 5, 100);
+    if (key === 's') throttle = Math.max(throttle - 5, 0);
 
-    if (engineRunning) {
-      if (key === 'w') {
-        throttle = Math.min(throttle + 5, 100);
-      } else if (key === 's') {
-        throttle = Math.max(throttle - 5, 0);
-      }
+    if (key === '1') cameraMode = 1;
+    if (key === '2') cameraMode = 2;
+    if (key === '3') cameraMode = 3;
 
-      if (throttle === 0) rpm = 1600;
-      else if (throttle <= 20) rpm = 2200;
-      else if (throttle <= 40) rpm = 4600;
-      else if (throttle <= 60) rpm = 5000;
-      else if (throttle <= 80) rpm = 5300;
-      else if (throttle <= 90) rpm = 5500;
-      else rpm = 5650;
-    }
+    if (throttle === 0) rpm = 1600;
+    else if (throttle <= 20) rpm = 2200;
+    else if (throttle <= 40) rpm = 4600;
+    else if (throttle <= 60) rpm = 5000;
+    else if (throttle <= 80) rpm = 5300;
+    else if (throttle <= 90) rpm = 5500;
+    else rpm = 5650;
 
     if (fuel <= 25 && !isLanding) autoLand();
   });
@@ -194,32 +186,26 @@
   scene.add(runway);
 
   const loader = new GLTFLoader();
-  loader.load('bayraktar.glb',
-    function (gltf) {
-      bayraktar = gltf.scene;
-      bayraktar.scale.set(0.03, 0.03, 0.03);
-      bayraktar.rotation.y = 0;
-      bayraktar.position.set(0, 0.25, 0);
-      bayraktar.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-          child.material.side = THREE.DoubleSide;
-          if (child.name.toLowerCase().includes('propeller')) {
-            propeller = child;
-          }
+  loader.load('bayraktar.glb', function (gltf) {
+    bayraktar = gltf.scene;
+    bayraktar.scale.set(0.03, 0.03, 0.03);
+    bayraktar.rotation.y = 0;
+    bayraktar.position.set(0, 0.25, 0);
+    bayraktar.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.material.side = THREE.DoubleSide;
+        if (child.name.toLowerCase().includes('propeller')) {
+          propeller = child;
         }
-      });
-      scene.add(bayraktar);
-      camera.lookAt(bayraktar.position);
-      document.getElementById('loading').style.display = 'none';
-      animate();
-    },
-    undefined,
-    function (error) {
-      console.error('❌ Помилка завантаження моделі Bayraktar:', error);
-    }
-  );
+      }
+    });
+    scene.add(bayraktar);
+    camera.lookAt(bayraktar.position);
+    document.getElementById('loading').style.display = 'none';
+    animate();
+  });
 
   function updateDashboard() {
     if (!isLanding && fuel > 0 && throttle > 0) {
@@ -227,13 +213,11 @@
     }
     dashboardElements.fuel.textContent = fuel.toFixed(1);
     dashboardElements.fuel.parentElement.style.color = fuel < 25 ? 'red' : 'white';
-
     const altitude = bayraktar?.position.y || 0;
     dashboardElements.altitude.textContent = altitude.toFixed(1);
     const vspeed = (altitude - lastAltitude) * 60;
     dashboardElements.vspeed.textContent = vspeed.toFixed(1);
     lastAltitude = altitude;
-
     dashboardElements.pitch.textContent = '0';
     dashboardElements.speed.textContent = (throttle * 1.5).toFixed(0);
     dashboardElements.heading.textContent = heading.toFixed(0);
@@ -254,20 +238,27 @@
 
   function animate() {
     requestAnimationFrame(animate);
+    controls.enabled = (cameraMode === 2);
     controls.update();
-    renderer.render(scene, camera);
-    drawHUD();
-    updateDashboard();
 
-    if (propeller && engineRunning) {
+    if (bayraktar) {
+      if (cameraMode === 1) {
+        const behind = new THREE.Vector3(0, 1, 8).applyMatrix4(bayraktar.matrixWorld);
+        camera.position.lerp(behind, 0.1);
+        camera.lookAt(bayraktar.position);
+      } else if (cameraMode === 3) {
+        camera.position.copy(bayraktar.position).add(new THREE.Vector3(0, 10, 0));
+        camera.lookAt(bayraktar.position);
+      }
+    }
+
+    if (propeller && engineStarted) {
       propeller.rotation.y += 0.1 + rpm / 20000;
     }
 
-    if (cameraMode === 1 && bayraktar) {
-      const tailPosition = new THREE.Vector3(0, 1, 5).applyMatrix4(bayraktar.matrixWorld);
-      camera.position.lerp(tailPosition, 0.1);
-      camera.lookAt(bayraktar.position);
-    }
+    renderer.render(scene, camera);
+    drawHUD();
+    updateDashboard();
   }
 </script>
 </body>
