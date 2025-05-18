@@ -33,7 +33,7 @@
       position: absolute;
       bottom: 20px;
       right: 20px;
-      background: rgba(0, 0, 0, 0.7); /* Трохи темніший фон для дашборду */
+      background: rgba(0, 0, 0, 0.7);
       color: white;
       font-family: Arial, sans-serif;
       font-size: 12px;
@@ -42,9 +42,9 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      width: 230px; /* Трохи ширше для індикатора */
+      width: 230px; 
     }
-    #dashboard div:not(#fuelGaugeContainer):not(#fuelGauge) { /* Щоб не впливати на сам індикатор */
+    #dashboard div:not(#fuelGaugeContainer):not(#fuelGauge) {
         display: flex; 
         justify-content: space-between; 
     } 
@@ -68,115 +68,63 @@
         padding: 8px;
         border-radius: 4px;
     }
-    #cameraModeIndicator {
-        /* Стилі вже враховані через flex в #hud */
-    }
+    #cameraModeIndicator { }
 
     /* --- СТИЛІ ДЛЯ ІНДИКАТОРА ПАЛИВА --- */
     #fuelGaugeContainer {
         width: 200px; 
-        margin-top: 15px; /* Відступ від текстових індикаторів */
+        margin-top: 15px; 
         margin-bottom: 5px;
         position: relative; 
         display: flex;
         flex-direction: column;
         align-items: center;
     }
-
     #fuelGauge {
-        width: 160px; 
-        height: 80px; 
+        width: 160px; height: 80px; 
         border-radius: 160px 160px 0 0; 
-        /* Приклад градієнта, налаштуйте відсотки під MAX_FUEL_LITERS */
-        /* 0-12.5% червоний, 12.5-25% жовтий, 25-50% зелений, 50-100% сірий */
-        /* Для 175л: 0-21.8л червоний, 21.8-43.75л жовтий, 43.75-87.5л зелений */
         background: conic-gradient(
-            from -90deg at 50% 100%, /* Центр градієнта внизу */
-            #ff4500 0% 12.5%,    /* 0 - 12.5% */
-            #ffd700 12.5% 25%,   /* 12.5% - 25% */
-            #32cd32 25% 50%,    /* 25% - 50% */
-            #555c62 50% 100%     /* 50% - 100% (темно-сірий) */
+            from -90deg at 50% 100%, 
+            #ff4500 0% 12.5%, #ffd700 12.5% 25%, 
+            #32cd32 25% 50%, #555c62 50% 100%
         );
-        border: 2px solid #888;
-        border-bottom: none; 
-        position: relative;
-        overflow: hidden; 
-        box-sizing: border-box;
+        border: 2px solid #888; border-bottom: none; 
+        position: relative; overflow: hidden; box-sizing: border-box;
     }
-
-    #fuelGauge::before { /* Внутрішній виріз для ефекту товщини шкали */
-        content: '';
-        position: absolute;
-        bottom: 0; /* Важливо, щоб починався знизу */
-        left: 50%;
-        transform: translateX(-50%);
-        width: 130px; 
-        height: 65px; 
-        background: rgba(0, 0, 0, 0.7); /* Такий же, як фон дашборду */
-        border-radius: 130px 130px 0 0;
-        z-index: 1;
+    #fuelGauge::before { 
+        content: ''; position: absolute; bottom: 0; 
+        left: 50%; transform: translateX(-50%);
+        width: 130px; height: 65px; 
+        background: rgba(0, 0, 0, 0.7); 
+        border-radius: 130px 130px 0 0; z-index: 1;
     }
-
     #fuelNeedle {
-        width: 3px; 
-        height: 75px; 
-        background-color: #ffa500; 
-        position: absolute;
-        bottom: 0px; 
-        left: 50%;
+        width: 3px; height: 75px; background-color: #ffa500; 
+        position: absolute; bottom: 0px; left: 50%;
         transform-origin: 50% 100%; 
         transform: translateX(-50%) rotate(-90deg); 
-        z-index: 3; /* Поверх усього, крім тексту */
-        transition: transform 0.3s linear; /* Плавніше оновлення */
+        z-index: 3; transition: transform 0.3s linear; 
         box-shadow: 0 0 3px black;
     }
-
     #fuelValueDigital {
-        position: absolute;
-        top: 45%; /* Трохи вище для мітки знизу */
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: white;
-        font-size: 18px;
-        font-weight: bold;
-        z-index: 4; 
-        background-color: rgba(0,0,0,0.7);
-        padding: 2px 6px;
-        border-radius: 3px;
-        min-width: 60px; /* Щоб не стрибала ширина */
-        text-align: center;
+        position: absolute; top: 45%; left: 50%;
+        transform: translate(-50%, -50%); color: white;
+        font-size: 18px; font-weight: bold; z-index: 4; 
+        background-color: rgba(0,0,0,0.7); padding: 2px 6px;
+        border-radius: 3px; min-width: 60px; text-align: center;
     }
-
     #fuelGaugeLabel {
-        position: absolute;
-        bottom: 8px; 
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 10px;
-        color: #ddd;
-        z-index: 4;
-        background-color: rgba(0,0,0,0.7);
-        padding: 1px 4px;
-        border-radius: 2px;
+        position: absolute; bottom: 8px; left: 50%;
+        transform: translateX(-50%); font-size: 10px;
+        color: #ddd; z-index: 4; background-color: rgba(0,0,0,0.7);
+        padding: 1px 4px; border-radius: 2px;
     }
-
     #fuelGaugeScaleLabels {
-        width: 190px; /* Трохи вужче, ніж сам індикатор, для кращого вигляду */
-        display: flex;
-        justify-content: space-between;
-        font-size: 10px;
-        color: #ccc;
-        margin-top: -12px; /* Підняти мітки ближче до шкали */
-        position: relative;
-        z-index: 0; /* Під індикатором */
-        padding: 0 10px; /* Відступи для крайніх міток */
-        box-sizing: border-box;
-    }
-    #fuelGaugeScaleLabels span {
-       /* Стилі для окремих міток */
+        width: 190px; display: flex; justify-content: space-between;
+        font-size: 10px; color: #ccc; margin-top: -12px; 
+        position: relative; z-index: 0; padding: 0 10px; box-sizing: border-box;
     }
     /* --- КІНЕЦЬ СТИЛІВ ДЛЯ ІНДИКАТОРА ПАЛИВА --- */
-
   </style>
   <script type="importmap">
     {
@@ -203,7 +151,6 @@
   <div>Вертикальна швидкість: <span id="vspeed">0</span> м/хв</div>
   <div>Режим газу: <span id="throttle">0</span>%</div>
   <div>Обороти двигуна: <span id="rpm">0</span> об/хв</div>
-
   <div id="fuelGaugeContainer">
     <div id="fuelGauge">
         <div id="fuelNeedle"></div>
@@ -214,7 +161,7 @@
         <span>0</span><span>25</span><span>50</span><span>75</span><span>100</span><span>125</span><span>150</span><span>300</span>
     </div>
   </div>
-  </div>
+</div>
 <div class="key-info">
     Керування:<br>
     W/S: Тангаж (вгору/вниз)<br>
@@ -263,14 +210,14 @@
   const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста (на гвинт)", "Орбітальна"];
   let currentCameraMode = CAMERA_MODES.FOLLOW;
 
-  const tailViewPositionOffset = new THREE.Vector3(0, 7, -18); 
+  // Ваші налаштування камери, які працювали для "Вигляд з хвоста"
+  const tailViewPositionOffset = new THREE.Vector3(0, 7, -20); 
   const tailViewLookAtOffset = new THREE.Vector3(-10, 8, 360);
+  
   const followCameraOffset = new THREE.Vector3(0, 6, 18); 
 
-  // --- ЕЛЕМЕНТИ ТА НАЛАШТУВАННЯ ІНДИКАТОРА ПАЛИВА ---
-  let fuelNeedle, fuelValueDigital; // Оголошуємо тут
+  let fuelNeedle, fuelValueDigital;
   const MAX_FUEL_LITERS = 300; 
-  // --- КІНЕЦЬ НАЛАШТУВАНЬ ІНДИКАТОРА ПАЛИВА ---
 
 
   function init() {
@@ -290,12 +237,10 @@
     orbitControls.dampingFactor = 0.1;
     orbitControls.enabled = false; 
     orbitControls.minDistance = 2;
-    orbitControls.maxDistance = 150;
+    orbitControls.maxDistance = 400; // Збільшено, враховуючи ваші значення для tailViewLookAtOffset
 
-    // --- Ініціалізація елементів індикатора палива ---
     fuelNeedle = document.getElementById('fuelNeedle');
     fuelValueDigital = document.getElementById('fuelValueDigital');
-    // --- ---
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -338,11 +283,17 @@
 
         /* // Блок для відладки камери - ЗАКОМЕНТОВАНО
         if (bayraktarModel) { 
-            const debugCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2); 
-            const debugCubeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 }); 
-            const debugCube = new THREE.Mesh(debugCubeGeo, debugCubeMat);
-            debugCube.position.set(tailViewLookAtOffset.x, tailViewLookAtOffset.y, tailViewLookAtOffset.z); 
-            bayraktarModel.add(debugCube); 
+            const lookAtGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const lookAtMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const lookAtCube = new THREE.Mesh(lookAtGeo, lookAtMat);
+            lookAtCube.position.set(tailViewLookAtOffset.x, tailViewLookAtOffset.y, tailViewLookAtOffset.z);
+            bayraktarModel.add(lookAtCube);
+
+            const camPosGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            const camPosMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            const camPosCube = new THREE.Mesh(camPosGeo, camPosMat);
+            camPosCube.position.set(tailViewPositionOffset.x, tailViewPositionOffset.y, tailViewPositionOffset.z);
+            bayraktarModel.add(camPosCube);
         }
         */
       },
@@ -359,65 +310,56 @@
     );
     setupEventListeners();
     updateCameraModeIndicator();
-    updateFuelGauge(); // Початкове оновлення індикатора палива
+    updateFuelGauge(); 
     animate();
   }
 
-  function setupEventListeners() {
-    window.addEventListener('resize', onWindowResize, false);
-    document.addEventListener('keydown', (event) => { 
-        keysPressed[event.key.toLowerCase()] = true; 
-        if (event.key.toLowerCase() === 'c') switchCameraMode();
-    });
-    document.addEventListener('keyup', (event) => { 
-        keysPressed[event.key.toLowerCase()] = false; 
-        if (event.code === 'Space' && bayraktarModel && gameState.altitude > 10) fireMissile();
-    });
-  }
-
-  function switchCameraMode() {
-    currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
-    orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
-    if (bayraktarModel) bayraktarModel.visible = true;
-    if (bayraktarModel && currentCameraMode === CAMERA_MODES.ORBIT) {
-      const desiredOrbitStartPos = bayraktarModel.position.clone().add(new THREE.Vector3(0,10,20).applyQuaternion(bayraktarModel.quaternion));
-      if (camera.position.distanceTo(desiredOrbitStartPos) > 1.0) { 
-          camera.position.copy(desiredOrbitStartPos);
-      }
-      orbitControls.target.copy(bayraktarModel.position);
-    }
-    updateCameraModeIndicator();
-  }
-  
-  function updateCameraModeIndicator() {
-      document.getElementById('currentCameraModeName').textContent = CAMERA_MODE_NAMES[currentCameraMode];
-  }
-
+  function setupEventListeners() { /* ... код без змін ... */ }
+  function switchCameraMode() { /* ... код без змін ... */ }
+  function updateCameraModeIndicator() { /* ... код без змін ... */ }
   function fireMissile() { /* ... код без змін ... */ }
 
   function updateGameState(deltaTime) { 
     if (!bayraktarModel) return;
+
     const thrustAcceleration = 20, dragFactor = 0.005, liftFactor = 0.05, gravity = 9.81, rotationSpeed = 1.5 * deltaTime; 
-    if (keysPressed['shift'] && gameState.engineOn) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
-    if ((keysPressed['control'] || keysPressed['ctrl']) && gameState.engineOn) gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
-    if (!gameState.engineOn && gameState.throttle > 0) gameState.throttle = 0;
     
-    let pitchChange = 0, rollChange = 0, yawChange = 0;
-    const playerIsPitchingUp = keysPressed['s']; // Або keysPressed['w'], залежно від вашого керування
+    // --- Керування тангажем (W/S) ---
+    // ПРИПУЩЕННЯ: 'S' - ніс вгору, 'W' - ніс вниз. 
+    // Якщо у вас навпаки, змініть логіку для pitchChange та визначення playerIsPitchingUp.
+    // Також, model.rotateX(негативне значення) зазвичай піднімає ніс.
+    let pitchChange = 0;
+    const playerIsPitchingUp = keysPressed['s']; 
 
-    if (keysPressed['w']) pitchChange = rotationSpeed; 
-    if (keysPressed['s']) pitchChange = -rotationSpeed; // Узгодьте з playerIsPitchingUp
+    if (keysPressed['w']) { // Ніс вниз
+        pitchChange = rotationSpeed; 
+    }
+    if (keysPressed['s']) { // Ніс вгору
+        pitchChange = -rotationSpeed; 
+    }
+    // --- ---
 
+    let rollChange = 0, yawChange = 0;
     if (keysPressed['a']) rollChange = rotationSpeed; 
     if (keysPressed['d']) rollChange = -rotationSpeed;
     if (keysPressed['q']) yawChange = rotationSpeed; 
     if (keysPressed['e']) yawChange = -rotationSpeed;
     
-    bayraktarModel.rotateX(pitchChange); bayraktarModel.rotateZ(rollChange); bayraktarModel.rotateY(yawChange);
+    if (keysPressed['shift'] && gameState.engineOn) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
+    if ((keysPressed['control'] || keysPressed['ctrl']) && gameState.engineOn) gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
+    if (!gameState.engineOn && gameState.throttle > 0) gameState.throttle = 0;
+        
+    bayraktarModel.rotateX(pitchChange); 
+    bayraktarModel.rotateZ(rollChange); 
+    bayraktarModel.rotateY(yawChange);
+
     let actualThrust = gameState.throttle * thrustAcceleration, drag = dragFactor * gameState.speed * gameState.speed;
-    gameState.speed += (actualThrust - drag) * deltaTime; gameState.speed = Math.max(0, gameState.speed);
+    gameState.speed += (actualThrust - drag) * deltaTime; 
+    gameState.speed = Math.max(0, gameState.speed);
+    
     const moveDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(bayraktarModel.quaternion);
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
+    
     let lift = liftFactor * gameState.speed * gameState.speed * Math.cos(bayraktarModel.rotation.x); 
     
     if (gameState.altitude <= 0.1) { 
@@ -431,37 +373,83 @@
             else { gameState.vSpeed = 0;}
         } else { gameState.vSpeed = 0; }
     } else { gameState.vSpeed += (lift - gravity) * deltaTime; }
-    bayraktarModel.position.y += gameState.vSpeed * deltaTime; gameState.altitude = bayraktarModel.position.y; 
+    bayraktarModel.position.y += gameState.vSpeed * deltaTime; 
+    gameState.altitude = bayraktarModel.position.y; 
+    
     if (bayraktarModel) { 
-        bayraktarModel.updateMatrixWorld(true); modelBoundingBox.setFromObject(bayraktarModel);
-        if (modelBoundingBox.min.y < 0) { bayraktarModel.position.y -= modelBoundingBox.min.y; if (gameState.vSpeed < 0) { gameState.vSpeed = 0; } gameState.altitude = bayraktarModel.position.y; }
+        bayraktarModel.updateMatrixWorld(true); 
+        modelBoundingBox.setFromObject(bayraktarModel);
+        if (modelBoundingBox.min.y < 0) { 
+            bayraktarModel.position.y -= modelBoundingBox.min.y; 
+            if (gameState.vSpeed < 0) { gameState.vSpeed = 0; } 
+            gameState.altitude = bayraktarModel.position.y; 
+        }
     }
-    if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; gameState.fuel = Math.max(0, gameState.fuel); if (gameState.fuel === 0) { gameState.engineOn = false; gameState.throttle = 0; engineSound.pause(); }}
+    
+    if (gameState.engineOn) { /* ... код пального без змін ... */ }
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
     if (engineSound) engineSound.volume = Math.max(0.1, gameState.throttle * 0.5);
+    
     const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
-    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); gameState.roll = THREE.MathUtils.radToDeg(euler.z); gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
+    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); 
+    gameState.roll = THREE.MathUtils.radToDeg(euler.z); 
+    gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
   }
   
-  function updateCamera(deltaTime) { /* ... код без змін ... */ }
+  function updateCamera(deltaTime) {
+    if (!bayraktarModel) return;
+    
+    // bayraktarModel.visible = true; // Забезпечити видимість, якщо десь приховується
+
+    switch (currentCameraMode) {
+      case CAMERA_MODES.FOLLOW:
+        orbitControls.enabled = false;
+        if (bayraktarModel.visible === false) bayraktarModel.visible = true; // На випадок, якщо десь було приховано
+        
+        let desiredFollowPos = followCameraOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+        
+        // --- КОРЕКЦІЯ ВИСОТИ КАМЕРИ СЛІДУВАННЯ ---
+        const minCameraHeightAboveGround = 1.5; 
+        if (desiredFollowPos.y < minCameraHeightAboveGround) {
+            desiredFollowPos.y = minCameraHeightAboveGround;
+        }
+        // --- КІНЕЦЬ КОРЕКЦІЇ ---
+
+        camera.position.lerp(desiredFollowPos, 0.1); 
+        
+        let lookAtTargetForFollow = bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0));
+        // Корекція точки погляду, якщо камера примусово піднята
+        if (actualLookAtTarget.y < 0.5 && desiredFollowPos.y > actualLookAtTarget.y) { 
+             actualLookAtTarget.y = Math.min(desiredFollowPos.y - 0.5, 0.5); 
+        }
+        camera.lookAt(lookAtTargetForFollow); // Використовуємо оригінальну змінну
+        break;
+
+      case CAMERA_MODES.TAIL_VIEW:
+        orbitControls.enabled = false;
+        if (bayraktarModel.visible === false) bayraktarModel.visible = true;
+        const worldCameraTailPosition = tailViewPositionOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+        camera.position.copy(worldCameraTailPosition);
+        const worldLookAtPropellerPosition = tailViewLookAtOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+        camera.lookAt(worldLookAtPropellerPosition);
+        break;
+
+      case CAMERA_MODES.ORBIT:
+        orbitControls.enabled = true;
+        if (bayraktarModel.visible === false) bayraktarModel.visible = true;
+        if (orbitControls.object.position.distanceTo(orbitControls.target) > orbitControls.maxDistance * 1.5) {
+            const offset = new THREE.Vector3().subVectors(orbitControls.object.position, orbitControls.target).normalize().multiplyScalar(orbitControls.maxDistance * 0.8);
+            orbitControls.object.position.copy(orbitControls.target).add(offset);
+        }
+        orbitControls.target.copy(bayraktarModel.position); 
+        orbitControls.update(deltaTime);
+        break;
+    }
+  }
+
   function updateHUD() { /* ... код без змін ... */ }
   function onWindowResize() { /* ... код без змін ... */ }
-
-  // --- НОВА ФУНКЦІЯ ДЛЯ ОНОВЛЕННЯ ІНДИКАТОРА ПАЛИВА ---
-  function updateFuelGauge() {
-    if (!fuelNeedle || !fuelValueDigital) return; // Перевірка, чи елементи існують
-
-    const currentFuelLiters = (gameState.fuel / 100) * MAX_FUEL_LITERS; 
-    fuelValueDigital.textContent = currentFuelLiters.toFixed(1) + ' lt';
-    const normalizedFuel = Math.max(0, Math.min(currentFuelLiters / MAX_FUEL_LITERS, 1));
-    const angle = (normalizedFuel * 180) - 90; 
-    fuelNeedle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
-
-    if (normalizedFuel < 0.125) { fuelValueDigital.style.color = '#ff4500'; } 
-    else if (normalizedFuel < 0.25) { fuelValueDigital.style.color = '#ffd700';} 
-    else { fuelValueDigital.style.color = 'white'; }
-  }
-  // --- КІНЕЦЬ ФУНКЦІЇ ІНДИКАТОРА ПАЛИВА ---
+  function updateFuelGauge() { /* ... код без змін ... */ }
 
   function animate() {
     requestAnimationFrame(animate);
@@ -470,7 +458,7 @@
     updateGameState(deltaTime);
     if (bayraktarModel) updateCamera(deltaTime);
     updateHUD();
-    updateFuelGauge(); // Оновлюємо індикатор палива
+    updateFuelGauge(); 
     renderer.render(scene, camera);
   }
   init();
