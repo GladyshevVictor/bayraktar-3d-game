@@ -103,7 +103,8 @@
     Shift: Газ +<br>
     Ctrl: Газ -<br>
     Space: Пуск ракети<br>
-    C: Змінити режим камери
+    C: Змінити режим камери<br>
+    6: Допоміжний зліт (60+ вузлів)
 </div>
 
 <audio id="engineSound" src="diesel-drive-by-3-mz000007-47135.mp3" loop></audio>
@@ -123,15 +124,24 @@
   const startSound = document.getElementById('startSound');
   const missileSound = document.getElementById('missileSound');
 
+  // --- КОНСТАНТИ ШВИДКОСТІ ЗЛЬОТУ ---
+  const KNOTS_TO_MPS = 0.514444; 
+  const NORMAL_TAKEOFF_SPEED_KNOTS = 72;
+  const ASSISTED_TAKEOFF_SPEED_KNOTS = 60;
+  const NORMAL_TAKEOFF_SPEED_MPS = NORMAL_TAKEOFF_SPEED_KNOTS * KNOTS_TO_MPS; 
+  const ASSISTED_TAKEOFF_SPEED_MPS = ASSISTED_TAKEOFF_SPEED_KNOTS * KNOTS_TO_MPS; 
+  const MIN_ASSISTED_LIFTOFF_VSPEED = 0.3; 
+  // --- КІНЕЦЬ КОНСТАНТ ШВИДКОСТІ ЗЛЬОТУ ---
+
   const gameState = {
     fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0,
     vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150,
-    minSpeedTakeoff: 25, engineOn: false
+    engineOn: false // minSpeedTakeoff видалено
   };
 
   const keysPressed = {};
 
-  // --- КОНСТАНТИ КАМЕРИ ---
+  // --- КОНСТАНТИ КАМЕРИ (ваші успішні значення) ---
   const CAMERA_MODES = {
     FOLLOW: 0,
     TAIL_VIEW: 1, 
@@ -140,15 +150,9 @@
   const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста (на гвинт)", "Орбітальна"];
   let currentCameraMode = CAMERA_MODES.FOLLOW;
 
-  // Зміщення для камери "Вигляд з хвоста" (на гвинт)
-  // Важливо: Ці значення, ймовірно, потребуватимуть точного налаштування під вашу модель!
-  // Позиція камери: на центральній осі хвоста, трохи вище точки з'єднання V-хвоста,
-  // і не надто далеко назад.
-  const tailViewPositionOffset = new THREE.Vector3(0, 7, -17); // <--- МІНЯТИ ТУТ (X_камери, Y_камери, Z_камери)
-  // Точка, на яку дивиться камера (центр гвинта)
-  const tailViewLookAtOffset = new THREE.Vector3(-10, 8, 360); // <--- МІНЯТИ ТУТ (X_гвинта, Y_гвинта, Z_гвинта)
+  const tailViewPositionOffset = new THREE.Vector3(0, 7, -20); 
+  const tailViewLookAtOffset = new THREE.Vector3(-10, 8, 360);
 
-  // Зміщення для камери слідування
   const followCameraOffset = new THREE.Vector3(0, 6, 18); 
   // --- КІНЕЦЬ КОНСТАНТ КАМЕРИ ---
 
@@ -170,7 +174,7 @@
     orbitControls.dampingFactor = 0.1;
     orbitControls.enabled = false; 
     orbitControls.minDistance = 2;
-    orbitControls.maxDistance = 150;
+    orbitControls.maxDistance = 150; // Можна збільшити, якщо потрібно для tailViewLookAtOffset = 360
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -213,24 +217,17 @@
         
         if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
 
-        // --- Блок для відладки позиції точки спостереження (гвинта) ---
-        // Розкоментуйте його, щоб побачити червоний кубик там, куди дивиться камера в режимі TAIL_VIEW.
-        // Налаштовуйте tailViewLookAtOffset та позицію кубика, поки кубик не опиниться на гвинті.
-        /* // Розкоментуйте цей рядок, щоб активувати debugCube
+        /* // Блок для відладки позиції точки спостереження (гвинта) - ЗАКОМЕНТОВАНО
         if (bayraktarModel) { 
             console.log("Модель завантажена, додаємо куб для відладки точки гвинта.");
             const debugCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2); 
             const debugCubeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 }); 
             const debugCube = new THREE.Mesh(debugCubeGeo, debugCubeMat);
-            
-            // Важливо: ці координати мають бути такими ж, як у tailViewLookAtOffset
             debugCube.position.set(tailViewLookAtOffset.x, tailViewLookAtOffset.y, tailViewLookAtOffset.z); 
-            
             bayraktarModel.add(debugCube); 
             console.log("Куб для відладки додано до моделі Bayraktar на позицію:", debugCube.position);
         }
-        */ // Розкоментуйте цей рядок, щоб активувати debugCube
-        // --- Кінець блоку для відладки ---
+        */
 
       },
       function (xhr) { if (xhr.lengthComputable) progressSpan.textContent = Math.round((xhr.loaded / xhr.total) * 100) + '%'; },
@@ -298,8 +295,14 @@
     if (!gameState.engineOn && gameState.throttle > 0) gameState.throttle = 0;
     
     let pitchChange = 0, rollChange = 0, yawChange = 0;
+    // Визначте, яка клавіша у вас відповідає за тангаж ВГОРУ (підняття носа)
+    const playerIsPitchingUp = keysPressed['s']; // Якщо 'W' піднімає ніс, замініть на keysPressed['w']
+    
     if (keysPressed['w']) pitchChange = rotationSpeed; 
-    if (keysPressed['s']) pitchChange = -rotationSpeed;
+    if (keysPressed['s']) pitchChange = -rotationSpeed; // Якщо 'S' - тангаж вгору, то тут має бути +
+    // УВАГА: Якщо 'S' - це тангаж ВГОРУ, то pitchChange для 's' має бути rotationSpeed, а для 'w' -rotationSpeed.
+    // Або, якщо playerIsPitchingUp = keysPressed['s'], то ця змінна вже враховує це.
+
     if (keysPressed['a']) rollChange = rotationSpeed; 
     if (keysPressed['d']) rollChange = -rotationSpeed;
     if (keysPressed['q']) yawChange = rotationSpeed; 
@@ -318,24 +321,56 @@
     
     let lift = liftFactor * gameState.speed * gameState.speed * Math.cos(bayraktarModel.rotation.x); 
     
-    if (gameState.altitude > 0 || (gameState.altitude <=0 && lift > gravity && gameState.speed > gameState.minSpeedTakeoff) ) {
+    // --- Логіка вертикального руху та зльоту ---
+    if (gameState.altitude <= 0.1) { 
+        let allowTakeoff = false;
+        let isAssistedAttempt = false;
+        
+        if (keysPressed['6'] && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS) {
+            allowTakeoff = true;
+            isAssistedAttempt = true;
+        }
+
+        if (gameState.speed >= NORMAL_TAKEOFF_SPEED_MPS && lift > gravity && playerIsPitchingUp) {
+            allowTakeoff = true;
+        }
+        
+        if (allowTakeoff) {
+            const verticalForceEffect = (lift - gravity);
+
+            if (isAssistedAttempt && playerIsPitchingUp && verticalForceEffect <= 0 ) {
+                gameState.vSpeed = MIN_ASSISTED_LIFTOFF_VSPEED;
+            } else if ( (verticalForceEffect > 0 && playerIsPitchingUp) || (isAssistedAttempt && playerIsPitchingUp) ) {
+                 // Додано playerIsPitchingUp і для звичайного зльоту з позитивним lift-gravity
+                gameState.vSpeed += verticalForceEffect * deltaTime;
+                if (gameState.vSpeed < 0) gameState.vSpeed = 0;
+            } else {
+                gameState.vSpeed = 0;
+            }
+        } else {
+            gameState.vSpeed = 0;
+        }
+
+    } else { 
         gameState.vSpeed += (lift - gravity) * deltaTime;
-    } else if (gameState.altitude <= 0) { 
-        gameState.vSpeed = 0; 
     }
+
     bayraktarModel.position.y += gameState.vSpeed * deltaTime;
-    
+    gameState.altitude = bayraktarModel.position.y; 
+
     if (bayraktarModel) { 
         bayraktarModel.updateMatrixWorld(true); 
         modelBoundingBox.setFromObject(bayraktarModel);
 
         if (modelBoundingBox.min.y < 0) {
             bayraktarModel.position.y -= modelBoundingBox.min.y; 
-            gameState.vSpeed = 0; 
+            if (gameState.vSpeed < 0) { 
+                gameState.vSpeed = 0; 
+            }
+            gameState.altitude = bayraktarModel.position.y; 
         }
     }
-    gameState.altitude = bayraktarModel ? bayraktarModel.position.y : 0;
-
+    
     if (gameState.engineOn) { 
         gameState.fuel -= gameState.throttle * 0.01 * deltaTime; 
         gameState.fuel = Math.max(0, gameState.fuel); 
@@ -371,6 +406,11 @@
         break;
       case CAMERA_MODES.ORBIT:
         orbitControls.enabled = true;
+        // Переконуємося, що orbitControls не "застряг" на дуже великій відстані через попередні значення камери
+        if (orbitControls.object.position.distanceTo(orbitControls.target) > orbitControls.maxDistance * 1.5) {
+            const offset = new THREE.Vector3().subVectors(orbitControls.object.position, orbitControls.target).normalize().multiplyScalar(orbitControls.maxDistance * 0.8);
+            orbitControls.object.position.copy(orbitControls.target).add(offset);
+        }
         orbitControls.target.copy(bayraktarModel.position); 
         orbitControls.update(deltaTime);
         break;
@@ -382,9 +422,9 @@
     document.getElementById('altitude').textContent = gameState.altitude.toFixed(0) + ' м';
     document.getElementById('pitch').textContent = gameState.pitch.toFixed(1) + '°';
     document.getElementById('roll').textContent = gameState.roll.toFixed(1) + '°';
-    document.getElementById('speed').textContent = (gameState.speed * 3.6).toFixed(0) + ' км/год';
+    document.getElementById('speed').textContent = (gameState.speed * 3.6).toFixed(0) + ' км/год'; // м/с в км/год
     document.getElementById('heading').textContent = gameState.heading.toFixed(0) + '°';
-    document.getElementById('vspeed').textContent = (gameState.vSpeed * 60).toFixed(0) + ' м/хв';
+    document.getElementById('vspeed').textContent = (gameState.vSpeed * 60).toFixed(0) + ' м/хв'; // м/с в м/хв
     document.getElementById('throttle').textContent = (gameState.throttle * 100).toFixed(0) + '%';
     document.getElementById('rpm').textContent = gameState.rpm.toFixed(0) + ' об/хв';
     document.getElementById('score').textContent = gameState.score;
