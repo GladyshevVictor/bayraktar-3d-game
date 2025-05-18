@@ -317,7 +317,7 @@
   // fireMissile() - вже є повний вище
   // updateGameState(deltaTime) - вже є повний вище (з новими змінами lift та посадки)
 
-  function updateCamera(deltaTime) {
+  function updateCamera() {
     if (!bayraktarModel) { return; }
     switch (currentCameraMode) {
       case CAMERA_MODES.FOLLOW:
