@@ -75,7 +75,7 @@
 
   let scene, camera, renderer, clock, orbitControls;
   let bayraktarModel, mixer;
-  let propellerMesh = null; 
+  let propellerMesh = null; // Змінна для гвинта
   const modelBoundingBox = new THREE.Box3(); 
   const engineSound = document.getElementById('engineSound');
   const startSound = document.getElementById('startSound');
@@ -139,18 +139,23 @@
         bayraktarModel = gltf.scene;
         bayraktarModel.scale.set(2, 2, 2); 
         bayraktarModel.position.set(0, 0.5, 0); 
+        
+        propellerMesh = null; // Скидаємо перед пошуком
         bayraktarModel.traverse(node => { 
             if (node.isMesh) {
                 node.castShadow = true; 
+                // console.log("Mesh in model:", node.name); // Для відладки імен мешів
             }
+            // Шукаємо гвинт за ім'ям "propeller"
             if (node.name === "propeller") { 
                 propellerMesh = node;
-                console.log("Propeller mesh found:", propellerMesh);
+                console.log("Propeller mesh FOUND:", propellerMesh);
             }
         });
         if (!propellerMesh) {
-            console.warn("ВАЖЛИВО: Меш гвинта з ім'ям 'propeller' не знайдено!");
+            console.warn("ВАЖЛИВО: Меш гвинта з ім'ям 'propeller' НЕ ЗНАЙДЕНО! Анімація гвинта не працюватиме. Перевірте назву у вашій 3D-моделі.");
         }
+
         scene.add(bayraktarModel);
         if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
         loadingDiv.style.display = 'none';
@@ -309,6 +314,16 @@
     bayraktarModel.rotateX(pitchChange); 
     bayraktarModel.rotateZ(rollChange); 
     bayraktarModel.rotateY(yawChange);
+
+    // --- ОБЕРТАННЯ ГВИНТА ---
+    if (propellerMesh && gameState.engineOn && gameState.rpm > 0) {
+        const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI; 
+        const propellerRotationChange = rotationSpeedRPM * deltaTime;
+        // Спробуйте .rotateX() або .rotateY(), якщо Z не підходить.
+        // Якщо напрямок не той, змініть знак: propellerMesh.rotateZ(-propellerRotationChange);
+        propellerMesh.rotateZ(propellerRotationChange); 
+    }
+    // --- КІНЕЦЬ ОБЕРТАННЯ ГВИНТА ---
 
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0); 
     let drag = dragFactor * gameState.speed * gameState.speed;
