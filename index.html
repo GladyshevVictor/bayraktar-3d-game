@@ -76,8 +76,8 @@
   let scene, camera, renderer, clock, orbitControls;
   let bayraktarModel, mixer;
   let propellerMesh = null; 
-  let initialPropellerQuaternion = null; // Для повернення гвинта на місце
-  const PROPELLER_RETURN_SPEED = 0.05; // Швидкість повернення гвинта
+  let initialPropellerQuaternion = null; 
+  const PROPELLER_RETURN_SPEED = 0.05; 
 
   const modelBoundingBox = new THREE.Box3(); 
   const engineSound = document.getElementById('engineSound');
@@ -142,24 +142,16 @@
         bayraktarModel = gltf.scene;
         bayraktarModel.scale.set(2, 2, 2); 
         bayraktarModel.position.set(0, 0.5, 0); 
-        
         propellerMesh = null; 
         bayraktarModel.traverse(node => { 
-            if (node.isMesh) {
-                node.castShadow = true; 
-            }
+            if (node.isMesh) { node.castShadow = true; }
             if (node.name === "propeller") { 
                 propellerMesh = node;
                 console.log("Propeller mesh FOUND:", propellerMesh);
-                if (propellerMesh) { // Зберігаємо початкову орієнтацію, якщо гвинт знайдено
-                    initialPropellerQuaternion = propellerMesh.quaternion.clone();
-                }
+                if (propellerMesh) { initialPropellerQuaternion = propellerMesh.quaternion.clone(); }
             }
         });
-        if (!propellerMesh) {
-            console.warn("ВАЖЛИВО: Меш гвинта з ім'ям 'propeller' НЕ ЗНАЙДЕНО! Анімація гвинта не працюватиме.");
-        }
-
+        if (!propellerMesh) { console.warn("ВАЖЛИВО: Меш гвинта 'propeller' НЕ ЗНАЙДЕНО!");}
         scene.add(bayraktarModel);
         if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
         loadingDiv.style.display = 'none';
@@ -282,7 +274,7 @@
     
     const thrustAcceleration = 15; 
     const dragFactor = 0.008;   
-    let liftFactor = 0.025; 
+    let baseLiftFactor = 0.025; 
     const gravity = 9.81;
     const rotationSpeed = 1.5 * deltaTime; 
     
@@ -319,26 +311,19 @@
     bayraktarModel.rotateZ(rollChange); 
     bayraktarModel.rotateY(yawChange);
 
-    // --- ОБЕРТАННЯ ГВИНТА ---
-    if (propellerMesh) { // Переконуємося, що гвинт знайдено
+    if (propellerMesh) {
         if (gameState.engineOn && gameState.rpm > 0) {
             const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI; 
             const propellerRotationChange = rotationSpeedRPM * deltaTime;
-            // ВИКОРИСТОВУЄМО Y, ЯК ВИ ВКАЗАЛИ
             propellerMesh.rotateY(propellerRotationChange); 
-            // Якщо напрямок не той, спробуйте: propellerMesh.rotateY(-propellerRotationChange);
         } else if (!gameState.engineOn && initialPropellerQuaternion) {
-            // Якщо двигун вимкнено, плавно повертаємо гвинт до початкової орієнтації
-            // Перевіряємо, чи кватерніони не надто близькі, щоб уникнути нескінченного slerp
             if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) {
                  propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
             } else {
-                // Якщо досить близько, просто встановлюємо в початкове положення
                 propellerMesh.quaternion.copy(initialPropellerQuaternion);
             }
         }
     }
-    // --- КІНЕЦЬ ОБЕРТАННЯ ГВИНТА ---
 
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0); 
     let drag = dragFactor * gameState.speed * gameState.speed;
@@ -352,6 +337,13 @@
     const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion); 
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
     
+    let currentLiftFactor = baseLiftFactor;
+    const groundEffectAltitude = 5; 
+    const groundEffectBoost = 1.15; 
+    if (gameState.altitude > 0 && gameState.altitude < groundEffectAltitude && gameState.vSpeed < 0) { // Ефект тільки при зниженні близько до землі
+        currentLiftFactor *= groundEffectBoost;
+    }
+
     let pitchEffectFactor = 1.0; 
     const currentPitchRad = bayraktarModel.rotation.x; 
     const pitchDownSensitivity = 7.0; 
@@ -369,7 +361,7 @@
             pitchEffectFactor = Math.max(0, pitchUpMaxFactor - (Math.abs(currentPitchRad) - criticalPitchUpRad) * stallSensitivity); 
         }
     }
-    let calculatedLift = liftFactor * gameState.speed * gameState.speed * pitchEffectFactor;
+    let calculatedLift = currentLiftFactor * gameState.speed * gameState.speed * pitchEffectFactor;
     let lift = calculatedLift; 
     const highSpeedThreshold = NORMAL_TAKEOFF_SPEED_MPS * 1.5;
     if (gameState.speed > highSpeedThreshold && gameState.altitude > 50) {
@@ -393,17 +385,34 @@
             else { gameState.vSpeed = 0;}
         } else { gameState.vSpeed = 0; }
     } else { gameState.vSpeed += (lift - gravity) * deltaTime; }
-    bayraktarModel.position.y += gameState.vSpeed * deltaTime; gameState.altitude = bayraktarModel.position.y; 
+    bayraktarModel.position.y += gameState.vSpeed * deltaTime; 
     
+    // --- ОНОВЛЕНА КОРЕКЦІЯ ЗІТКНЕННЯ З ЗЕМЛЕЮ (ЛОГІКА ПОСАДКИ) ---
     if (bayraktarModel) { 
+        const prevVSpeed = gameState.vSpeed; // Зберігаємо vSpeed перед можливою зміною позиції
         bayraktarModel.updateMatrixWorld(true); 
         modelBoundingBox.setFromObject(bayraktarModel);
-        if (modelBoundingBox.min.y < 0) { 
+
+        if (modelBoundingBox.min.y < 0 && prevVSpeed <= 0) { // Колізія відбувається при русі вниз або вже на землі
+            const verticalSpeedAtTouchdown = prevVSpeed; // Це була вертикальна швидкість в момент торкання/проникнення
+            
             bayraktarModel.position.y -= modelBoundingBox.min.y; 
-            if (gameState.vSpeed < 0) { gameState.vSpeed = 0; } 
             gameState.altitude = bayraktarModel.position.y; 
+
+            if (verticalSpeedAtTouchdown < -2.5) { // Жорстка посадка (поріг -2.5 м/с)
+                console.log("Hard landing! VSpeed:", verticalSpeedAtTouchdown.toFixed(2));
+                gameState.vSpeed = Math.abs(verticalSpeedAtTouchdown * 0.25); // Невеликий відскок (25% від швидкості удару)
+            } else if (verticalSpeedAtTouchdown < -0.1) { // Нормальна посадка
+                 console.log("Touchdown. VSpeed:", verticalSpeedAtTouchdown.toFixed(2));
+                 gameState.vSpeed = 0; 
+            } else { 
+                 gameState.vSpeed = 0; // Якщо вже котимося або vSpeed була близька до нуля/позитивна
+            }
+        } else {
+             gameState.altitude = bayraktarModel.position.y; // Оновлюємо висоту, якщо немає колізії при русі вниз
         }
     }
+    // --- КІНЕЦЬ КОРЕКЦІЇ ---
     
     if (gameState.engineOn) { 
         gameState.fuel -= gameState.throttle * 0.01 * deltaTime; 
