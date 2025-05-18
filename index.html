@@ -126,7 +126,6 @@
   const tailViewLookAtOffset = new THREE.Vector3(-10, 8, 360);
   const followCameraOffset = new THREE.Vector3(0, 6, 18);  
 
-  // --- ОГОЛОШЕННЯ ВСІХ ФУНКЦІЙ ---
   function startEngineAttempt() {
     if (!bayraktarModel) return;
     if (!gameState.engineOn) { 
@@ -372,8 +371,6 @@
     const rpmEl = document.getElementById('rpm'); if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
     const scoreEl = document.getElementById('score'); if (scoreEl) scoreEl.textContent = gameState.score;
   }
-
-  function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
   
   function updateFuelGauge() {
     if (!fuelNeedle || !fuelValueDigital) return; 
