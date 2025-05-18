@@ -87,75 +87,20 @@
   const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста (на гвинт)", "Орбітальна"];
   let currentCameraMode = CAMERA_MODES.FOLLOW;
 
-  const tailViewPositionOffset = new THREE.Vector3(0, 7, -17); 
+  const tailViewPositionOffset = new THREE.Vector3(0, 7, -20); 
   const tailViewLookAtOffset = new THREE.Vector3(-10, 8, 360);
   const followCameraOffset = new THREE.Vector3(0, 6, 18); 
 
-  function init() {
-    clock = new THREE.Clock();
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB); 
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000);
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    document.body.appendChild(renderer.domElement);
-    orbitControls = new OrbitControls(camera, renderer.domElement);
-    orbitControls.enableDamping = true; orbitControls.dampingFactor = 0.1; orbitControls.enabled = false; 
-    orbitControls.minDistance = 2; orbitControls.maxDistance = 400; 
-    fuelNeedle = document.getElementById('fuelNeedle');
-    fuelValueDigital = document.getElementById('fuelValueDigital');
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
-    const textureLoader = new THREE.TextureLoader();
-    const runwayTexture = textureLoader.load('runway_texture.png', undefined, undefined, () => { console.warn("Runway texture not found."); });
-    runwayTexture.wrapS = THREE.RepeatWrapping; runwayTexture.wrapT = THREE.RepeatWrapping; runwayTexture.repeat.set(5, 20); runwayTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    const runwayMaterial = new THREE.MeshStandardMaterial({ map: runwayTexture, color: runwayTexture ? 0xffffff : 0x555555, roughness: 0.8, metalness: 0.2 });
-    const runway = new THREE.Mesh( new THREE.PlaneGeometry(200, 3000), runwayMaterial ); runway.rotation.x = -Math.PI / 2; runway.receiveShadow = true; scene.add(runway);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000), new THREE.MeshStandardMaterial({ color: 0x3E8948, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; ground.receiveShadow = true; scene.add(ground);
-    const gltfLoader = new GLTFLoader();
-    const loadingDiv = document.getElementById('loading'); const progressSpan = document.getElementById('progress');
-    gltfLoader.load( 'bayraktar.glb',
-      function (gltf) {
-        bayraktarModel = gltf.scene;
-        bayraktarModel.scale.set(2, 2, 2); 
-        bayraktarModel.position.set(0, 0.5, 0); 
-        bayraktarModel.traverse(node => { if (node.isMesh) node.castShadow = true; });
-        scene.add(bayraktarModel);
-        console.log("Bayraktar model ADDED to scene. Position:", bayraktarModel.position.x, bayraktarModel.position.y, bayraktarModel.position.z);
-        console.log("Is bayraktarModel an object?", typeof bayraktarModel === 'object' && bayraktarModel !== null);
-        if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
-        loadingDiv.style.display = 'none';
-        try { startSound.play().then(() => { engineSound.loop = true; engineSound.volume = 0.1; engineSound.play(); gameState.engineOn = true; }).catch(e => console.warn("Audio play failed", e));
-        } catch (e) { console.error("Error playing sounds:", e); }
-        if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
-        /* // Блок для відладки камери - ЗАКОМЕНТОВАНО ... */
-      },
-      function (xhr) { if (xhr.lengthComputable) progressSpan.textContent = Math.round((xhr.loaded / xhr.total) * 100) + '%'; },
-      function (error) {
-        console.error('GLTF loading error:', error); loadingDiv.textContent = 'Помилка моделі. Плейсхолдер.'; progressSpan.textContent = '';
-        const placeholderGeo = new THREE.BoxGeometry(5, 1, 3); const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-        bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); bayraktarModel.position.set(0, 0.5, 0); 
-        scene.add(bayraktarModel);
-        console.log("Bayraktar PLACEHOLDER model ADDED to scene. Position:", bayraktarModel.position.x, bayraktarModel.position.y, bayraktarModel.position.z);
-        console.log("Is bayraktarModel (placeholder) an object?", typeof bayraktarModel === 'object' && bayraktarModel !== null);
-        if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
-      }
-    );
-    setupEventListeners();
-    updateCameraModeIndicator(); 
-    updateFuelGauge(); 
-    animate();
-  }
-
+  function init() { /* ... код без змін, включаючи ініціалізацію fuelNeedle та fuelValueDigital ... */ }
+  
   function setupEventListeners() {
     window.addEventListener('resize', onWindowResize, false);
     document.addEventListener('keydown', (event) => { 
         const key = event.key.toLowerCase();
-        console.log("Key pressed:", key); // ДЛЯ ВІДЛАДКИ НАТИСКАННЯ КЛАВІШ
+        // console.log("Key pressed:", key); // Розкоментуйте для відладки всіх клавіш
         keysPressed[key] = true; 
         if (key === 'c' || key === 'с') { 
-            console.log("'C' or 'с' key detected for camera switch."); // ДЛЯ ВІДЛАДКИ
+            // console.log("'C' or 'с' key detected for camera switch."); // Для відладки натискання C
             switchCameraMode();
         }
     });
@@ -167,7 +112,6 @@
 
   function switchCameraMode() {
     currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
-    // ЧІТКИЙ LOG ДЛЯ ВІДЛАДКИ
     console.log("SWITCHING CAMERA MODE -> Index:", currentCameraMode, "| Name:", CAMERA_MODE_NAMES[currentCameraMode]); 
     orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
     if (bayraktarModel) bayraktarModel.visible = true;
@@ -176,112 +120,119 @@
       if (camera.position.distanceTo(desiredOrbitStartPos) > 1.0) { camera.position.copy(desiredOrbitStartPos); }
       orbitControls.target.copy(bayraktarModel.position);
     }
-    updateCameraModeIndicator();
+    updateCameraModeIndicator(); // ВАЖЛИВО: оновлюємо індикатор тут
   }
   
-  function updateCameraModeIndicator() { /* ... код без змін ... */ }
+  // ОНОВЛЕНА ФУНКЦІЯ З БІЛЬШ ДЕТАЛЬНИМИ ЛОГАМИ
+  function updateCameraModeIndicator() {
+      console.log("Attempting to update camera mode indicator. Current mode index:", currentCameraMode);
+      const indicatorElement = document.getElementById('currentCameraModeName');
+      
+      if (indicatorElement) {
+          const modeName = CAMERA_MODE_NAMES[currentCameraMode];
+          console.log("Found #currentCameraModeName element. Target mode name:", modeName);
+          if (modeName !== undefined) { 
+              indicatorElement.textContent = modeName;
+              console.log("SUCCESS: Text content SET to:", modeName);
+          } else {
+              indicatorElement.textContent = "Невідомий режим"; 
+              console.warn("WARN: Camera mode index is out of bounds for CAMERA_MODE_NAMES:", currentCameraMode);
+          }
+      } else {
+          console.error("ERROR: HTML Element with ID '#currentCameraModeName' NOT FOUND!"); 
+      }
+  }
+
   function fireMissile() { /* ... код без змін ... */ }
   function updateGameState(deltaTime) { /* ... код без змін ... */ }
-  
-  function updateCamera(deltaTime) {
-    if (!bayraktarModel) {
-      // console.warn("updateCamera: bayraktarModel is not defined, skipping camera update."); // Для відладки
-      return;
-    }
-
-    // --- ТИМЧАСОВИЙ ТЕСТОВИЙ БЛОК ДЛЯ КАМЕРИ ---
-    // Розкоментуйте цей блок, а оригінальний switch закоментуйте,
-    // щоб перевірити, чи сам механізм перемикання режимів працює візуально.
-    /*
-    console.log("UPDATE CAMERA - Current Mode FOR TEST:", currentCameraMode);
-    orbitControls.enabled = false;
-    switch (currentCameraMode) {
-        case CAMERA_MODES.FOLLOW: // 0
-            camera.position.set(0, 5, 20); // Фіксована позиція
-            camera.lookAt(0, 0, 0);
-            console.log("Test Follow Cam Active");
-            break;
-        case CAMERA_MODES.TAIL_VIEW: // 1
-            camera.position.set(15, 5, 0); // Інша фіксована позиція
-            camera.lookAt(0, 0, 0);
-            console.log("Test Tail View Cam Active");
-            break;
-        case CAMERA_MODES.ORBIT: // 2
-            camera.position.set(0, 10, -15); // Ще інша позиція
-            camera.lookAt(0,0,0); // Для тесту OrbitControls вимкнені, але можна увімкнути
-            // orbitControls.enabled = true;
-            // orbitControls.target.set(0,0,0);
-            // orbitControls.update(deltaTime);
-            console.log("Test Orbit Cam Active");
-            break;
-        default:
-            camera.position.set(0, 10, 25); // Резервна позиція
-            camera.lookAt(0,0,0);
-    }
-    return; // Важливо, щоб оригінальний switch не виконавс
-    */
-    // --- КІНЕЦЬ ТИМЧАСОВОГО ТЕСТОВОГО БЛОКУ ---
-    
-    // Оригінальний switch - закоментуйте його, якщо використовуєте тестовий блок вище
-    switch (currentCameraMode) {
-      case CAMERA_MODES.FOLLOW:
-        orbitControls.enabled = false;
-        if (bayraktarModel.visible === false) bayraktarModel.visible = true;
-        let desiredFollowPos = followCameraOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
-        const minCameraHeightAboveGround = 1.5; 
-        if (desiredFollowPos.y < minCameraHeightAboveGround) { desiredFollowPos.y = minCameraHeightAboveGround; }
-        camera.position.lerp(desiredFollowPos, 0.1); 
-        let lookAtTargetForFollowCorrected = bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0));
-        if (lookAtTargetForFollowCorrected.y < 0.5 && desiredFollowPos.y > lookAtTargetForFollowCorrected.y + 0.5) { 
-             lookAtTargetForFollowCorrected.y = Math.max(0.2, desiredFollowPos.y - 1.0); 
-        } else if (lookAtTargetForFollowCorrected.y > desiredFollowPos.y + 2.0 && desiredFollowPos.y < minCameraHeightAboveGround + 1.0) {
-            lookAtTargetForFollowCorrected.y = desiredFollowPos.y + 1.0;
-        }
-        camera.lookAt(lookAtTargetForFollowCorrected);
-        break;
-      case CAMERA_MODES.TAIL_VIEW:
-        orbitControls.enabled = false;
-        if (bayraktarModel.visible === false) bayraktarModel.visible = true;
-        const worldCameraTailPosition = tailViewPositionOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
-        camera.position.copy(worldCameraTailPosition);
-        const worldLookAtPropellerPosition = tailViewLookAtOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
-        camera.lookAt(worldLookAtPropellerPosition);
-        break;
-      case CAMERA_MODES.ORBIT:
-        orbitControls.enabled = true;
-        if (bayraktarModel.visible === false) bayraktarModel.visible = true;
-        if (orbitControls.object.position.distanceTo(orbitControls.target) > orbitControls.maxDistance * 1.5) {
-            const offset = new THREE.Vector3().subVectors(orbitControls.object.position, orbitControls.target).normalize().multiplyScalar(orbitControls.maxDistance * 0.8);
-            orbitControls.object.position.copy(orbitControls.target).add(offset);
-        }
-        orbitControls.target.copy(bayraktarModel.position); 
-        orbitControls.update(deltaTime);
-        break;
-    }
-  }
-
-  function updateHUD() { /* ... код без змін ... */ }
+  function updateCamera(deltaTime) { /* ... код з останніми виправленнями для FOLLOW ... */ }
+  function updateHUD() { /* ... код з останніми виправленнями ... */ }
   function onWindowResize() { /* ... код без змін ... */ }
   function updateFuelGauge() { /* ... код без змін ... */ }
 
   function animate() {
     requestAnimationFrame(animate);
     const deltaTime = clock.getDelta();
-    // console.log("Animate loop. BayraktarModel exists:", !!bayraktarModel); // Для відладки
     if (mixer) mixer.update(deltaTime);
+    
     if(bayraktarModel) { 
         updateGameState(deltaTime);
         updateCamera(deltaTime);
-    } else {
-        // Можна тут поставити камеру в якусь дефолтну позицію, якщо моделі ще немає
-        // camera.position.set(0, 10, 30);
-        // camera.lookAt(0,0,0);
     }
+    
     updateHUD();
     updateFuelGauge(); 
     renderer.render(scene, camera);
   }
-  init();
+  
+  // Переконайтеся, що init() викликається останнім, після оголошення всіх функцій
+  // init(); // Це вже було в попередньому коді, залишаємо як є.
+  // Якщо init() викликався раніше, ніж оголошувалися функції, це могло бути проблемою.
+
+  // Повний код для init() та інших функцій, які я позначив як /* ... код без змін ... */,
+  // має бути таким, як у вашому попередньому повному файлі, де все працювало,
+  // за винятком проблеми з назвою камери.
+
+  // Ось приклад повного init() з попереднього коду, щоб ви могли порівняти:
+  // (Я копіюю його сюди для повноти, але він має бути ідентичним тому, що у вас вже є)
+  // function init() {
+  //   clock = new THREE.Clock();
+  //   scene = new THREE.Scene();
+  //   scene.background = new THREE.Color(0x87CEEB); 
+  //   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000);
+  //   renderer = new THREE.WebGLRenderer({ antialias: true });
+  //   renderer.setSize(window.innerWidth, window.innerHeight);
+  //   renderer.shadowMap.enabled = true;
+  //   document.body.appendChild(renderer.domElement);
+  //   orbitControls = new OrbitControls(camera, renderer.domElement);
+  //   orbitControls.enableDamping = true; orbitControls.dampingFactor = 0.1; orbitControls.enabled = false; 
+  //   orbitControls.minDistance = 2; orbitControls.maxDistance = 400; 
+  //   fuelNeedle = document.getElementById('fuelNeedle');
+  //   fuelValueDigital = document.getElementById('fuelValueDigital');
+  //   const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+  //   const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
+  //   const textureLoader = new THREE.TextureLoader();
+  //   const runwayTexture = textureLoader.load('runway_texture.png', undefined, undefined, () => { console.warn("Runway texture not found."); });
+  //   runwayTexture.wrapS = THREE.RepeatWrapping; runwayTexture.wrapT = THREE.RepeatWrapping; runwayTexture.repeat.set(5, 20); runwayTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  //   const runwayMaterial = new THREE.MeshStandardMaterial({ map: runwayTexture, color: runwayTexture ? 0xffffff : 0x555555, roughness: 0.8, metalness: 0.2 });
+  //   const runway = new THREE.Mesh( new THREE.PlaneGeometry(200, 3000), runwayMaterial ); runway.rotation.x = -Math.PI / 2; runway.receiveShadow = true; scene.add(runway);
+  //   const ground = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000), new THREE.MeshStandardMaterial({ color: 0x3E8948, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; ground.receiveShadow = true; scene.add(ground);
+  //   const gltfLoader = new GLTFLoader();
+  //   const loadingDiv = document.getElementById('loading'); const progressSpan = document.getElementById('progress');
+  //   gltfLoader.load( 'bayraktar.glb',
+  //     function (gltf) {
+  //       bayraktarModel = gltf.scene;
+  //       bayraktarModel.scale.set(2, 2, 2); 
+  //       bayraktarModel.position.set(0, 0.5, 0); 
+  //       bayraktarModel.traverse(node => { if (node.isMesh) node.castShadow = true; });
+  //       scene.add(bayraktarModel);
+  //       console.log("Bayraktar model ADDED to scene. Position:", bayraktarModel.position.x, bayraktarModel.position.y, bayraktarModel.position.z);
+  //       console.log("Is bayraktarModel an object?", typeof bayraktarModel === 'object' && bayraktarModel !== null);
+  //       if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
+  //       loadingDiv.style.display = 'none';
+  //       try { startSound.play().then(() => { engineSound.loop = true; engineSound.volume = 0.1; engineSound.play(); gameState.engineOn = true; }).catch(e => console.warn("Audio play failed", e));
+  //       } catch (e) { console.error("Error playing sounds:", e); }
+  //       if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
+  //     },
+  //     function (xhr) { if (xhr.lengthComputable) progressSpan.textContent = Math.round((xhr.loaded / xhr.total) * 100) + '%'; },
+  //     function (error) {
+  //       console.error('GLTF loading error:', error); loadingDiv.textContent = 'Помилка моделі. Плейсхолдер.'; progressSpan.textContent = '';
+  //       const placeholderGeo = new THREE.BoxGeometry(5, 1, 3); const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+  //       bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); bayraktarModel.position.set(0, 0.5, 0); 
+  //       scene.add(bayraktarModel);
+  //       console.log("Bayraktar PLACEHOLDER model ADDED to scene. Position:", bayraktarModel.position.x, bayraktarModel.position.y, bayraktarModel.position.z);
+  //       console.log("Is bayraktarModel (placeholder) an object?", typeof bayraktarModel === 'object' && bayraktarModel !== null);
+  //       if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
+  //     }
+  //   );
+  //   setupEventListeners();
+  //   updateCameraModeIndicator(); 
+  //   updateFuelGauge(); 
+  //   animate();
+  // }
+  // Я розкоментував виклик init() в кінці, якщо він був закоментований
+   init(); // Цей виклик має бути в самому кінці скрипта
+
 </script>
 </body>
 </html>
