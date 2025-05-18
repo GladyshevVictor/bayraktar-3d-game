@@ -122,7 +122,8 @@
   const tailViewLookAtOffset = new THREE.Vector3(-10, 8, 360);
   const followCameraOffset = new THREE.Vector3(0, 6, 18);   
 
-  function createWaypointVisuals() {
+  // --- Utility and Setup Functions (no changes from before unless specified) ---
+  function createWaypointVisuals() { /* ... same ... */ 
     if (waypointLine) { scene.remove(waypointLine); waypointLine.geometry.dispose(); waypointLine.material.dispose(); waypointLine = null;}
     waypoints.forEach(wp => scene.remove(wp));  
     waypoints = [];  
@@ -138,8 +139,7 @@
     highlightCurrentWaypoint();
     updateWaypointLine();
   }
-
-  function highlightCurrentWaypoint() {
+  function highlightCurrentWaypoint() { /* ... same ... */ 
     waypoints.forEach((wp, index) => {
         if (index < currentWaypointIndex) {  
             wp.material.color.setHex(WAYPOINT_COLOR_PASSED); wp.material.opacity = 0.3;
@@ -150,8 +150,7 @@
         }
     });
   }
-
-  function updateWaypointLine() {
+  function updateWaypointLine() { /* ... same ... */
     if (waypointLine) { scene.remove(waypointLine); waypointLine.geometry.dispose(); waypointLine.material.dispose(); waypointLine = null;}
     if (currentWaypointIndex < waypointCoordinates.length && waypointCoordinates.length > 1) {
         let pointsForLine = [];
@@ -165,9 +164,8 @@
             scene.add(waypointLine);
         }
     }
-  }
-  
-  function updateWaypointHUD() {
+   }
+  function updateWaypointHUD() { /* ... same ... */ 
     if (!nextWaypointInfoElement) return;
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
@@ -177,13 +175,11 @@
         nextWaypointInfoElement.textContent = "Маршрут завершено!";
     } else { nextWaypointInfoElement.textContent = "--"; }
   }
-
-  function updateCameraModeIndicator() {
+  function updateCameraModeIndicator() { /* ... same ... */ 
     const indicator = document.getElementById('currentCameraModeName');
     if (indicator) { indicator.textContent = CAMERA_MODE_NAMES[currentCameraMode] || "Невідомий режим"; }
   }
-
-  function setupEventListeners() {
+  function setupEventListeners() { /* ... same ... */ 
     document.addEventListener('keydown', (event) => {
         keysPressed[event.code] = true; keysPressed[event.key.toLowerCase()] = true; 
         if (event.code === 'KeyC') {
@@ -217,9 +213,8 @@
         }
     });
     keysPressed.engineStartInitiated = false; 
-  }
-
-  function init() {
+   }
+  function init() { /* ... same ... */
     clock = new THREE.Clock();
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);  
@@ -270,8 +265,11 @@
       }
     );
     setupEventListeners(); updateCameraModeIndicator(); updateFuelGauge(); updateAerodromeIndicator(); updateWaypointHUD(); animate();
-  }
+   }
   
+  // ================================================================
+  // === ОСНОВНІ ЗМІНИ В updateGameState ===
+  // ================================================================
   function updateGameState(deltaTime) {  
     if (!bayraktarModel) return;
 
@@ -281,62 +279,87 @@
     const gravity = 9.81; 
     const rotationSpeedInput = 1.5 * deltaTime;
     
-    let pitchChange = 0; let rollChange = 0; let yawChange = 0;  
-    const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і']; 
-    const groundControlSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.7;  
-    const groundPitchSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.4;  
+    let pitchChange = 0; 
+    let rollChange = 0; 
+    let yawChange = 0;  
+    
+    // Отримуємо поточну орієнтацію для перевірки лімітів
+    // Використовуємо 'YXZ' порядок, оскільки він використовується для HUD і здається більш інтуїтивним для визначення "вгору/вниз" тангажу
+    const currentOrientationEulerYXZ = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
+    const currentPitchRad = currentOrientationEulerYXZ.x; // Позитивний = ніс вгору
+    const currentRollRad = currentOrientationEulerYXZ.z;  // Позитивний = крен праворуч (стандартно для euler.z в YXZ)
 
-    if (keysPressed['KeyW'] || keysPressed['ц']) { pitchChange = -rotationSpeedInput; } 
-    if (keysPressed['KeyS'] || keysPressed['і']) { pitchChange = rotationSpeedInput; }  
-
-    if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {  
-        if (keysPressed['KeyA'] || keysPressed['ф']) { rollChange = rotationSpeedInput; } 
-        if (keysPressed['KeyD'] || keysPressed['в']) { rollChange = -rotationSpeedInput; }    
-    } else { 
-        rollChange = 0;  
-        if ((keysPressed['KeyS'] || keysPressed['і']) && gameState.speed > groundPitchSpeedThreshold) {
-             pitchChange = (bayraktarModel.rotation.x > -MAX_PITCH_ANGLE_RAD * 0.6) ? rotationSpeedInput * 0.2 : 0;
-        } else if ((keysPressed['KeyW'] || keysPressed['ц']) && gameState.speed > groundPitchSpeedThreshold) {
-             pitchChange = (bayraktarModel.rotation.x < MAX_PITCH_ANGLE_RAD * 0.3) ? -rotationSpeedInput * 0.2 : 0;
-        } else { pitchChange = 0; }
+    // --- Керування Тангажем (Pitch) з обмеженням на вході ---
+    if (keysPressed['KeyW'] || keysPressed['ц']) { // Команда: Ніс ВНИЗ
+        if (currentPitchRad > -MAX_PITCH_ANGLE_RAD) { // Дозволяємо опускати ніс, якщо ще не на максимумі опускання
+            pitchChange = -rotationSpeedInput;
+        } else {
+            pitchChange = 0; // Досягнуто ліміту опускання носа
+        }
+    } else if (keysPressed['KeyS'] || keysPressed['і']) { // Команда: Ніс ВГОРУ
+        if (currentPitchRad < MAX_PITCH_ANGLE_RAD) { // Дозволяємо піднімати ніс, якщо ще не на максимумі підйому
+            pitchChange = rotationSpeedInput;
+        } else {
+            pitchChange = 0; // Досягнуто ліміту підйому носа
+        }
     }
+
+    // --- Керування Креном (Roll) з обмеженням на вході та на землі ---
+    if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) { // В повітрі або швидко на землі
+        if (keysPressed['KeyA'] || keysPressed['ф']) { // Команда: Крен ВЛІВО
+            if (currentRollRad < MAX_ROLL_ANGLE_RAD) { // Дозволяємо крен вліво (позитивний currentRollRad це крен праворуч, тому ліворуч до +MAX)
+                                                       // Виправлення: Якщо позитивний euler.z це крен праворуч, то для крену вліво потрібен негативний rollChange
+                                                       // і перевіряти currentRollRad > -MAX_ROLL_ANGLE_RAD
+                if (currentRollRad > -MAX_ROLL_ANGLE_RAD) {
+                     rollChange = -rotationSpeedInput; // Крен ВЛІВО
+                } else {
+                    rollChange = 0;
+                }
+            } else { rollChange = 0; }
+        } else if (keysPressed['KeyD'] || keysPressed['в']) { // Команда: Крен ВПРАВО
+             if (currentRollRad < MAX_ROLL_ANGLE_RAD) { // Дозволяємо крен вправо
+                 rollChange = rotationSpeedInput; // Крен ВПРАВО
+             } else {
+                 rollChange = 0;
+             }
+        } else {
+            rollChange = 0; // Немає команди крену
+        }
+    } else { // На землі і повільно
+        rollChange = 0; // Немає крену на землі від клавіш A/D при низькій швидкості
+        
+        // Логіка тангажу на землі (зменшена чутливість)
+        // pitchChange вже може бути 0 від логіки вище, якщо клавіші W/S не натиснуті
+        if ((keysPressed['KeyS'] || keysPressed['і']) && gameState.speed > groundPitchSpeedThreshold) { // Ніс вгору на землі
+             if (currentPitchRad < MAX_PITCH_ANGLE_RAD * 0.3) pitchChange = rotationSpeedInput * 0.2; else pitchChange = 0; // Обмежуємо підйом на землі
+        } else if ((keysPressed['KeyW'] || keysPressed['ц']) && gameState.speed > groundPitchSpeedThreshold) { // Ніс вниз на землі
+             if (currentPitchRad > -MAX_PITCH_ANGLE_RAD * 0.3) pitchChange = -rotationSpeedInput * 0.2; else pitchChange = 0; // Обмежуємо опускання на землі
+        } else if (!(keysPressed['KeyW'] || keysPressed['ц'] || keysPressed['KeyS'] || keysPressed['і'])) {
+            pitchChange = 0; // Якщо W/S не натиснуті, тангажу на землі немає
+        }
+    }
+
+    // --- Керування Рисканням (Yaw) ---
     const yawEffectiveness = (gameState.altitude > 0.1) ? 1.0 : 0.6;
     if (keysPressed['KeyQ'] || keysPressed['й']) { yawChange = rotationSpeedInput * yawEffectiveness; } 
     if (keysPressed['KeyE'] || keysPressed['у']) { yawChange = -rotationSpeedInput * yawEffectiveness; }
     
-    if (gameState.engineOn) {
-        if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
-        if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
-    }
-    if (!gameState.engineOn && gameState.throttle > 0 && !(keysPressed['KeyR'] || keysPressed['к'])) { gameState.throttle = 0; }
-    
+    // --- Застосування обертань ---
     bayraktarModel.rotateX(pitchChange); 
-    bayraktarModel.rotateZ(rollChange); 
+    bayraktarModel.rotateZ(rollChange); // УВАГА: rotateZ зазвичай для крену, якщо осі стандартні (Y-вгору)
     bayraktarModel.rotateY(yawChange);
+
+    // --- Нормалізація кватерніона ПІСЛЯ всіх обертань ---
+    // Блок жорсткого обмеження кутів Ейлера видалено. Покладаємося на обмеження вхідного сигналу.
+    bayraktarModel.quaternion.normalize();
+    // ================================================================
+    // === КІНЕЦЬ ОСНОВНИХ ЗМІН В updateGameState ===
+    // ================================================================
     
-    // ================================================================
-    // === ТИМЧАСОВО ПОВЕРТАЄМО СТАРИЙ МЕТОД ОБМЕЖЕННЯ КУТІВ (для діагностики рискання) ===
-    // ================================================================
-    bayraktarModel.rotation.setFromQuaternion(bayraktarModel.quaternion, bayraktarModel.rotation.order); // Синхронізуємо Euler з кватерніоном
+    // --- Решта логіки updateGameState (пропелер, фізика руху, зліт/посадка, маршрут, пальне, HUD) ---
+    const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і']; // Ця змінна використовується в логіці зльоту
 
-    if (bayraktarModel.rotation.x > MAX_PITCH_ANGLE_RAD) {
-        bayraktarModel.rotation.x = MAX_PITCH_ANGLE_RAD;
-    } else if (bayraktarModel.rotation.x < -MAX_PITCH_ANGLE_RAD) {
-        bayraktarModel.rotation.x = -MAX_PITCH_ANGLE_RAD;
-    }
-    // Для крену використовуємо bayraktarModel.rotation.z (якщо порядок XYZ або YXZ)
-    if (bayraktarModel.rotation.z > MAX_ROLL_ANGLE_RAD) { 
-        bayraktarModel.rotation.z = MAX_ROLL_ANGLE_RAD;
-    } else if (bayraktarModel.rotation.z < -MAX_ROLL_ANGLE_RAD) {
-        bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
-    }
-    // Оновлюємо кватерніон з обмежених кутів Ейлера
-    bayraktarModel.quaternion.setFromEuler(bayraktarModel.rotation);
-    // ================================================================
-    // === КІНЕЦЬ ТИМЧАСОВОГО БЛОКУ СТАРОГО ОБМЕЖЕННЯ ===
-    // ================================================================
-
-    if (propellerMesh) { // Propeller logic
+    if (propellerMesh) {
         if (gameState.engineOn && gameState.rpm > 0) {
             const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI;  
             propellerMesh.rotateY(rotationSpeedRPM * deltaTime);  
@@ -360,19 +383,25 @@
     if (gameState.altitude > 0.1 && gameState.altitude < groundEffectAltitude && gameState.speed > STALL_SPEED_MPS * 0.8 && gameState.vSpeed <= 0.1) { currentLiftFactor *= groundEffectBoost; }
     
     let pitchEffectFactor = 1.0; 
-    const currentPitchRadForLift = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').x;
+    // currentPitchRad вже визначено вище з YXZ для обмежень, використовуємо його ж
     const pitchDownSensitivity = 7.0; const pitchUpSensitivity = 1.5; const pitchUpMaxFactor = 1.25;   
     const criticalPitchUpRad = THREE.MathUtils.degToRad(15); const stallSensitivity = 5.0;     
-    if (currentPitchRadForLift > 0) { pitchEffectFactor = Math.max(0, 1.0 - currentPitchRadForLift * pitchDownSensitivity); }  
-    else if (currentPitchRadForLift < 0) {  
-        if (Math.abs(currentPitchRadForLift) < criticalPitchUpRad) { pitchEffectFactor = 1.0 + Math.abs(currentPitchRadForLift) * pitchUpSensitivity; pitchEffectFactor = Math.min(pitchEffectFactor, pitchUpMaxFactor); }  
-        else { pitchEffectFactor = Math.max(0, pitchUpMaxFactor - (Math.abs(currentPitchRadForLift) - criticalPitchUpRad) * stallSensitivity); }
-    }
+    if (currentPitchRad > 0) { // Ніс вгору (позитивний currentPitchRad)
+        pitchEffectFactor = Math.max(0, 1.0 - currentPitchRad * pitchDownSensitivity); 
+    } else if (currentPitchRad < 0) { // Ніс вниз (негативний currentPitchRad)
+        if (Math.abs(currentPitchRad) < criticalPitchUpRad) { 
+            pitchEffectFactor = 1.0 + Math.abs(currentPitchRad) * pitchUpSensitivity; 
+            pitchEffectFactor = Math.min(pitchEffectFactor, pitchUpMaxFactor); 
+        } else { 
+            pitchEffectFactor = Math.max(0, pitchUpMaxFactor - (Math.abs(currentPitchRad) - criticalPitchUpRad) * stallSensitivity); 
+        }
+    } // Якщо currentPitchRad == 0, pitchEffectFactor залишається 1.0
+
     let calculatedLift = 0; if (gameState.speed > STALL_SPEED_MPS) { calculatedLift = currentLiftFactor * gameState.speed * gameState.speed * pitchEffectFactor; }
     let lift = calculatedLift;  
     const highSpeedThreshold = NORMAL_TAKEOFF_SPEED_MPS * 1.5;
     if (gameState.speed > highSpeedThreshold && gameState.altitude > 50) { const maxLiftAtHighSpeed = gravity * 1.01; if (lift > maxLiftAtHighSpeed) { lift = maxLiftAtHighSpeed; } }
-    else if (gameState.altitude > 50 && Math.abs(currentPitchRadForLift) < THREE.MathUtils.degToRad(15)) { const maxHorizontalFlightLift = gravity * 1.08; if (lift > maxHorizontalFlightLift) { lift = maxHorizontalFlightLift; } }
+    else if (gameState.altitude > 50 && Math.abs(currentPitchRad) < THREE.MathUtils.degToRad(15)) { const maxHorizontalFlightLift = gravity * 1.08; if (lift > maxHorizontalFlightLift) { lift = maxHorizontalFlightLift; } }
     
     const prevVSpeed = gameState.vSpeed; const onGroundThreshold = 0.2; const veryLowSpeedThreshold = KNOTS_TO_MPS * 10;  
     if (gameState.altitude <= onGroundThreshold && gameState.speed < veryLowSpeedThreshold && !gameState.engineOn && !(keysPressed['Digit6'] && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS) ) {
@@ -385,6 +414,7 @@
     } else if (gameState.altitude <= 0.1) {  
         let allowTakeoff = false; let isAssistedAttempt = false;
         if ((keysPressed['Digit6']) && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS && gameState.engineOn) { allowTakeoff = true; isAssistedAttempt = true; }  
+        // playerIsPitchingUp - це коли натиснута 'S' (І), що тепер означає ніс ВГОРУ. Це правильно для зльоту.
         if (gameState.speed >= NORMAL_TAKEOFF_SPEED_MPS && lift > gravity && playerIsPitchingUp && gameState.engineOn) { allowTakeoff = true; }  
         if (allowTakeoff) {
             const verticalForceEffect = (lift - gravity);
@@ -405,7 +435,7 @@
         } gameState.altitude = bayraktarModel.position.y;  
     }
 
-    if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) { // Waypoint logic
+    if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) {
         const currentTargetPosition = waypointCoordinates[currentWaypointIndex];
         if (bayraktarModel.position.distanceTo(currentTargetPosition) < WAYPOINT_REACH_THRESHOLD) {
             console.log(`Пройдено маршрутну точку ${currentWaypointIndex + 1}!`); currentWaypointIndex++;
@@ -424,7 +454,8 @@
     gameState.roll = THREE.MathUtils.radToDeg(euler.z); 
     gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
 
-    if (keysPressed['KeyQ'] || keysPressed['й'] || keysPressed['KeyE'] || keysPressed['у']) { // Yaw logging
+    // Логування для діагностики (залишаємо активним)
+    if (keysPressed['KeyQ'] || keysPressed['й'] || keysPressed['KeyE'] || keysPressed['у']) {
        const currentEulerYXZ_for_yaw_log = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
        console.log(
            `YAW INPUT ACTIVE --- ` +
@@ -433,20 +464,20 @@
            `Model Euler Y (from quat 'YXZ', deg): ${THREE.MathUtils.radToDeg(currentEulerYXZ_for_yaw_log.y).toFixed(2)}, ` +
            `Model Euler Y (model.rotation.y, deg): ${THREE.MathUtils.radToDeg(bayraktarModel.rotation.y).toFixed(2)}`
        );
-   }
-    if (keysPressed['KeyW'] || keysPressed['ц']) { // Pitch logging
+    }
+    if (keysPressed['KeyW'] || keysPressed['ц']) {
         console.log(
             `PITCH INPUT ('Ц'/'W') ACTIVE --- ` +
             `Time: ${clock && clock.elapsedTime ? clock.elapsedTime.toFixed(2) : 'N/A'} ` +
             `Heading (HUD): ${gameState.heading.toFixed(2)}, ` +
             `Pitch (HUD): ${gameState.pitch.toFixed(2)}, ` +
-            `Model Euler X (deg from quat 'YXZ'): ${THREE.MathUtils.radToDeg(euler.x).toFixed(2)}, ` +
-            `Model Euler X (deg from model.rotation): ${THREE.MathUtils.radToDeg(bayraktarModel.rotation.x).toFixed(2)}`
+            `Roll (HUD): ${gameState.roll.toFixed(2)}, ` + // Додав логування крену
+            `Model Euler X (deg from quat 'YXZ'): ${THREE.MathUtils.radToDeg(euler.x).toFixed(2)}`
         );
     }
   }
   
-  function updateCamera(deltaTime) { /* ... no changes ... */ 
+  function updateCamera(deltaTime) { /* ... same ... */ 
     if (!bayraktarModel) { return; }
     switch (currentCameraMode) {
       case CAMERA_MODES.FOLLOW:
@@ -477,7 +508,7 @@
         break;
     }
   }
-  function updateHUD() { /* ... no changes ... */ 
+  function updateHUD() { /* ... same ... */ 
     const altitudeEl = document.getElementById('altitude'); if (altitudeEl) altitudeEl.textContent = gameState.altitude.toFixed(0) + ' м';
     const pitchEl = document.getElementById('pitch'); if (pitchEl) pitchEl.textContent = gameState.pitch.toFixed(1) + '°';
     const rollEl = document.getElementById('roll'); if (rollEl) rollEl.textContent = gameState.roll.toFixed(1) + '°';
@@ -488,7 +519,7 @@
     const rpmEl = document.getElementById('rpm'); if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
     const scoreEl = document.getElementById('score'); if (scoreEl) scoreEl.textContent = gameState.score;
   }
-  function updateFuelGauge() { /* ... no changes ... */ 
+  function updateFuelGauge() { /* ... same ... */ 
     if (!fuelNeedle || !fuelValueDigital) return;  
     const currentFuelLiters = (gameState.fuel / 100) * MAX_FUEL_LITERS;  
     fuelValueDigital.textContent = currentFuelLiters.toFixed(1) + ' lt';
@@ -499,7 +530,7 @@
     else if (normalizedFuel < 0.25) { fuelValueDigital.style.color = '#ffd700';}  
     else { fuelValueDigital.style.color = 'white'; }
   }
-  function updateAerodromeIndicator() { /* ... no changes ... */ 
+  function updateAerodromeIndicator() { /* ... same ... */ 
     if (!bayraktarModel || !aerodromeArrowElement || !aerodromeDistanceElement) {
         if (aerodromeArrowElement) aerodromeArrowElement.textContent = '-';
         if (aerodromeDistanceElement) aerodromeDistanceElement.textContent = '---- м';
@@ -524,7 +555,7 @@
     aerodromeArrowElement.textContent = '↑';  
     aerodromeArrowElement.style.transform = `rotate(${angleDeg}deg)`;
   }
-  function animate() { /* ... no changes ... */ 
+  function animate() { /* ... same ... */ 
     requestAnimationFrame(animate);
     const deltaTime = clock.getDelta();
     if (mixer) mixer.update(deltaTime);
