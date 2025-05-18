@@ -100,6 +100,12 @@
   const SHUTDOWN_HOLD_DURATION = 2.0; 
   let rKeyJustPressedForStart = false;
 
+  // Константи для обмеження кутів
+  const MAX_PITCH_ANGLE_DEG = 15; 
+  const MAX_ROLL_ANGLE_DEG = 25;  
+  const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(MAX_PITCH_ANGLE_DEG);
+  const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(MAX_ROLL_ANGLE_DEG);
+
   const gameState = { 
     fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, 
     vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, 
@@ -144,25 +150,16 @@
         bayraktarModel = gltf.scene;
         bayraktarModel.scale.set(2, 2, 2); 
         bayraktarModel.position.set(0, 0.5, 0); 
-        
         propellerMesh = null; 
         bayraktarModel.traverse(node => { 
-            if (node.isMesh) { 
-                node.castShadow = true; 
-                // console.log("Mesh name in model:", node.name); // Розкоментуйте для пошуку імені гвинта
-            }
-            if (node.name === "propeller") { // ВИКОРИСТОВУЄМО НАДАНЕ ВАМИ ІМ'Я
+            if (node.isMesh) { node.castShadow = true; }
+            if (node.name === "propeller") { 
                 propellerMesh = node;
                 console.log("Propeller mesh FOUND:", propellerMesh);
-                if (propellerMesh) { 
-                    initialPropellerQuaternion = propellerMesh.quaternion.clone();
-                }
+                if (propellerMesh) { initialPropellerQuaternion = propellerMesh.quaternion.clone(); }
             }
         });
-        if (!propellerMesh) {
-            console.warn("ВАЖЛИВО: Меш гвинта з ім'ям 'propeller' НЕ ЗНАЙДЕНО! Анімація гвинта не працюватиме.");
-        }
-
+        if (!propellerMesh) { console.warn("ВАЖЛИВО: Меш гвинта 'propeller' НЕ ЗНАЙДЕНО!");}
         scene.add(bayraktarModel);
         if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
         loadingDiv.style.display = 'none';
@@ -287,7 +284,7 @@
     const dragFactor = 0.008;   
     const baseLiftFactor = 0.025; 
     const gravity = 9.81;
-    const rotationSpeed = 1.5 * deltaTime; 
+    const rotationSpeedInput = 1.5 * deltaTime; 
     
     let pitchChange = 0; 
     let rollChange = 0;  
@@ -298,25 +295,25 @@
     const groundPitchSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.4; 
 
     if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) { 
-        if (keysPressed['KeyW']) { pitchChange = rotationSpeed; }  
-        if (keysPressed['KeyS']) { pitchChange = -rotationSpeed; } 
-        if (keysPressed['KeyA']) { rollChange = rotationSpeed; }   
-        if (keysPressed['KeyD']) { rollChange = -rotationSpeed; }  
+        if (keysPressed['KeyW']) { pitchChange = rotationSpeedInput; }  
+        if (keysPressed['KeyS']) { pitchChange = -rotationSpeedInput; } 
+        if (keysPressed['KeyA']) { rollChange = rotationSpeedInput; }   
+        if (keysPressed['KeyD']) { rollChange = -rotationSpeedInput; }  
     } else {
         rollChange = 0; 
         if (keysPressed['KeyS'] && gameState.speed > groundPitchSpeedThreshold) { 
             if (bayraktarModel.rotation.x > -MAX_PITCH_ANGLE_RAD * 0.6) {
-                 pitchChange = -rotationSpeed * 0.3; 
+                 pitchChange = -rotationSpeedInput * 0.3; 
             }
         } else if (keysPressed['KeyW'] && gameState.speed > groundPitchSpeedThreshold) { 
              if (bayraktarModel.rotation.x < MAX_PITCH_ANGLE_RAD * 0.3) {
-                pitchChange = rotationSpeed * 0.2; 
+                pitchChange = rotationSpeedInput * 0.2; 
             }
         } else { pitchChange = 0; }
     }
     const yawEffectiveness = (gameState.altitude > 0.1) ? 1.0 : 0.6;
-    if (keysPressed['KeyQ']) { yawChange = rotationSpeed * yawEffectiveness; } 
-    if (keysPressed['KeyE']) { yawChange = -rotationSpeed * yawEffectiveness; }
+    if (keysPressed['KeyQ']) { yawChange = rotationSpeedInput * yawEffectiveness; } 
+    if (keysPressed['KeyE']) { yawChange = -rotationSpeedInput * yawEffectiveness; }
     
     if (gameState.engineOn) {
         if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
