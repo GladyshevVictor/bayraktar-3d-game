@@ -132,15 +132,17 @@
 
   const CAMERA_MODES = {
     FOLLOW: 0,
-    TAIL_VIEW: 1, // Раніше FIRST_PERSON
+    TAIL_VIEW: 1, 
     ORBIT: 2,
   };
-  const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста", "Орбітальна"]; // Оновлено
+  const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста (на гвинт)", "Орбітальна"];
   let currentCameraMode = CAMERA_MODES.FOLLOW;
 
   // Зміщення для камери "Вигляд з хвоста" (налаштуйте під вашу модель!)
-  const tailViewPositionOffset = new THREE.Vector3(0, 1.5, 7); // Камера на хвості: Y-вгору, Z-назад
-  const tailViewLookAtOffset = new THREE.Vector3(0, 0.5, -8); // Точка на носі: Y-вгору, Z-вперед
+  // Камера розташована на хвості: Y-вгору, Z-назад відносно центру моделі
+  const tailViewPositionOffset = new THREE.Vector3(0, 1.2, 7.5); 
+  // Точка, на яку дивиться камера (центр гвинта): Y-вгору (на рівні гвинта), Z-назад (але перед камерою)
+  const tailViewLookAtOffset = new THREE.Vector3(0, 0.8, 5.0); 
 
   const followCameraOffset = new THREE.Vector3(0, 6, 18);
 
@@ -161,8 +163,8 @@
     orbitControls.enableDamping = true;
     orbitControls.dampingFactor = 0.1;
     orbitControls.enabled = false; 
-    orbitControls.minDistance = 5;  
-    orbitControls.maxDistance = 100; 
+    orbitControls.minDistance = 2;  // Зменшено для кращого огляду в TAIL_VIEW, якщо потрібно наблизитись
+    orbitControls.maxDistance = 150; // Збільшено для загального випадку
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -188,10 +190,10 @@
     const loadingDiv = document.getElementById('loading');
     const progressSpan = document.getElementById('progress');
 
-    gltfLoader.load( 'bayraktar.glb',
+    gltfLoader.load( 'bayraktar.glb', // Переконайтеся, що файл моделі існує
       function (gltf) {
         bayraktarModel = gltf.scene;
-        bayraktarModel.scale.set(2, 2, 2);
+        bayraktarModel.scale.set(2, 2, 2); // Налаштуйте масштаб
         bayraktarModel.traverse(node => { if (node.isMesh) node.castShadow = true; });
         scene.add(bayraktarModel);
         if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
@@ -235,13 +237,11 @@
     currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
     orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
     
-    if (bayraktarModel) bayraktarModel.visible = true; // Завжди видима
+    if (bayraktarModel) bayraktarModel.visible = true;
 
     if (bayraktarModel && currentCameraMode === CAMERA_MODES.ORBIT) {
-      // Встановлюємо більш типову початкову позицію для орбітальної камери, якщо перемикаємось з іншого режиму
       const desiredOrbitStartPos = bayraktarModel.position.clone().add(new THREE.Vector3(0,10,20).applyQuaternion(bayraktarModel.quaternion));
-      // Якщо камера не була вже в орбітальному режимі або її позиція значно відрізняється
-      if (!orbitControls.enabled || camera.position.distanceTo(desiredOrbitStartPos) > 1.0) { // Поріг відстані
+      if (!orbitControls.enabled || camera.position.distanceTo(desiredOrbitStartPos) > 1.0) { 
           camera.position.copy(desiredOrbitStartPos);
       }
       orbitControls.target.copy(bayraktarModel.position);
@@ -292,7 +292,7 @@
   function updateCamera(deltaTime) {
     if (!bayraktarModel) return;
     const lookAtTargetForFollow = bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0));
-    if (bayraktarModel) bayraktarModel.visible = true; // Забезпечити видимість
+    // bayraktarModel.visible = true; // Модель завжди видима в усіх режимах камери тут
 
     switch (currentCameraMode) {
       case CAMERA_MODES.FOLLOW:
@@ -303,10 +303,12 @@
         break;
       case CAMERA_MODES.TAIL_VIEW:
         orbitControls.enabled = false;
+        // Позиція камери на хвості
         const worldCameraTailPosition = tailViewPositionOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
         camera.position.copy(worldCameraTailPosition);
-        const worldLookAtNosePosition = tailViewLookAtOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
-        camera.lookAt(worldLookAtNosePosition);
+        // Точка, на яку дивиться камера (гвинт)
+        const worldLookAtPropellerPosition = tailViewLookAtOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+        camera.lookAt(worldLookAtPropellerPosition);
         break;
       case CAMERA_MODES.ORBIT:
         orbitControls.enabled = true;
