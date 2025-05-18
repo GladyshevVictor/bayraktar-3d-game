@@ -126,7 +126,6 @@
   const tailViewLookAtOffset = new THREE.Vector3(-10, 8, 360);
   const followCameraOffset = new THREE.Vector3(0, 6, 18);  
 
-  // --- ОГОЛОШЕННЯ ВСІХ ФУНКЦІЙ ДО ЇХ ВИКЛИКУ В INIT ---
   function startEngineAttempt() {
     if (!bayraktarModel) return;
     if (!gameState.engineOn) { 
@@ -140,6 +139,12 @@
             } catch (e) { console.error("Помилка відтворення звуків двигуна:", e); }
         } else { console.log("Неможливо запустити двигун: немає пального!"); }
     }
+  }
+
+  function onWindowResize() { 
+    camera.aspect = window.innerWidth / window.innerHeight; 
+    camera.updateProjectionMatrix(); 
+    renderer.setSize(window.innerWidth, window.innerHeight); 
   }
 
   function setupEventListeners() {
@@ -381,7 +386,7 @@
     else { fuelValueDigital.style.color = 'white'; }
   }
 
- function updateAerodromeIndicator() {
+  function updateAerodromeIndicator() {
     if (!bayraktarModel || !aerodromeArrowElement || !aerodromeDistanceElement) {
         if (aerodromeArrowElement) aerodromeArrowElement.textContent = '-';
         if (aerodromeDistanceElement) aerodromeDistanceElement.textContent = '---- м';
