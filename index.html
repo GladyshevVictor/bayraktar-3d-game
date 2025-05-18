@@ -278,7 +278,8 @@
     const baseLiftFactor = 0.025;  
     const gravity = 9.81; 
     const rotationSpeedInput = 1.5 * deltaTime;
-    
+    const groundControlSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.7; 
+    const groundPitchSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.4; 
     let pitchChange = 0; 
     let rollChange = 0; 
     let yawChange = 0;  
