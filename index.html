@@ -278,7 +278,7 @@
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0); 
     let drag = dragFactor * gameState.speed * gameState.speed;
     gameState.speed += (actualThrust - drag) * deltaTime; gameState.speed = Math.max(0, gameState.speed);
-    const moveDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(bayraktarModel.quaternion);
+    const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
     let lift = liftFactor * gameState.speed * gameState.speed * Math.cos(bayraktarModel.rotation.x); 
     
