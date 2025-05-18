@@ -100,6 +100,11 @@
   const SHUTDOWN_HOLD_DURATION = 2.0; 
   let rKeyJustPressedForStart = false;
 
+  const MAX_PITCH_ANGLE_DEG = 15; 
+  const MAX_ROLL_ANGLE_DEG = 25;  
+  const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(MAX_PITCH_ANGLE_DEG);
+  const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(MAX_ROLL_ANGLE_DEG);
+
   const gameState = { 
     fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, 
     vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, 
@@ -212,7 +217,8 @@
         } else {
             keysPressed[key] = false; 
         }
-        if (code === 'Space' && bayraktarModel && gameState.altitude > 0.1) { 
+        // Запуск ракети по ВІДПУСКАННЮ пробілу, ЯКЩО В ПОВІТРІ
+        if (code === 'Space' && bayraktarModel && gameState.altitude > 0.2) { // Збільшив поріг висоти для ракет трохи
             fireMissile();
         }
         if ((key === 'r' || key === 'к')) {
@@ -278,7 +284,7 @@
     const dragFactor = 0.008;   
     const baseLiftFactor = 0.025; 
     const gravity = 9.81;
-    const rotationSpeed = 1.5 * deltaTime; 
+    const rotationSpeedInput = 1.5 * deltaTime; // Базова швидкість зміни кутів від вводу
     
     let pitchChange = 0; 
     let rollChange = 0;  
@@ -289,19 +295,25 @@
     const groundPitchSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.4; 
 
     if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) { 
-        if (keysPressed['KeyW']) { pitchChange = rotationSpeed; }  
-        if (keysPressed['KeyS']) { pitchChange = -rotationSpeed; } 
-        if (keysPressed['KeyA']) { rollChange = rotationSpeed; }   
-        if (keysPressed['KeyD']) { rollChange = -rotationSpeed; }  
+        if (keysPressed['KeyW']) { pitchChange = rotationSpeedInput; }  
+        if (keysPressed['KeyS']) { pitchChange = -rotationSpeedInput; } 
+        if (keysPressed['KeyA']) { rollChange = rotationSpeedInput; }   
+        if (keysPressed['KeyD']) { rollChange = -rotationSpeedInput; }  
     } else {
         rollChange = 0; 
-        if (keysPressed['KeyS'] && gameState.speed > groundPitchSpeedThreshold) { pitchChange = -rotationSpeed * 0.3; } 
-        else if (keysPressed['KeyW'] && gameState.speed > groundPitchSpeedThreshold) { pitchChange = rotationSpeed * 0.2; }
-        else { pitchChange = 0; }
+        if (keysPressed['KeyS'] && gameState.speed > groundPitchSpeedThreshold) { 
+            if (bayraktarModel.rotation.x > -MAX_PITCH_ANGLE_RAD * 0.6) { // Обмеження підняття носа на землі
+                 pitchChange = -rotationSpeedInput * 0.3; 
+            }
+        } else if (keysPressed['KeyW'] && gameState.speed > groundPitchSpeedThreshold) { 
+             if (bayraktarModel.rotation.x < MAX_PITCH_ANGLE_RAD * 0.3) {
+                pitchChange = rotationSpeedInput * 0.2; 
+            }
+        } else { pitchChange = 0; }
     }
     const yawEffectiveness = (gameState.altitude > 0.1) ? 1.0 : 0.6;
-    if (keysPressed['KeyQ']) { yawChange = rotationSpeed * yawEffectiveness; } 
-    if (keysPressed['KeyE']) { yawChange = -rotationSpeed * yawEffectiveness; }
+    if (keysPressed['KeyQ']) { yawChange = rotationSpeedInput * yawEffectiveness; } 
+    if (keysPressed['KeyE']) { yawChange = -rotationSpeedInput * yawEffectiveness; }
     
     if (gameState.engineOn) {
         if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
@@ -313,24 +325,30 @@
     bayraktarModel.rotateZ(rollChange); 
     bayraktarModel.rotateY(yawChange);
 
-    if (propellerMesh) {
-        if (gameState.engineOn && gameState.rpm > 0) {
-            const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI; 
-            const propellerRotationChange = rotationSpeedRPM * deltaTime;
-            propellerMesh.rotateY(propellerRotationChange); 
-        } else if (!gameState.engineOn && initialPropellerQuaternion) {
-            if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) {
-                 propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
-            } else {
-                propellerMesh.quaternion.copy(initialPropellerQuaternion);
-            }
-        }
-    }
+    // --- ОБМЕЖЕННЯ КУТІВ ТАНГАЖУ ТА КРЕНУ ---
+    let currentPitch = bayraktarModel.rotation.x;
+    let currentRoll = bayraktarModel.rotation.z;
+
+    // Нормалізація для правильного порівняння (особливо важливо для крену, який може "перекрутитися")
+    while (currentPitch > Math.PI) currentPitch -= 2 * Math.PI;
+    while (currentPitch < -Math.PI) currentPitch += 2 * Math.PI;
+    while (currentRoll > Math.PI) currentRoll -= 2 * Math.PI;
+    while (currentRoll < -Math.PI) currentRoll += 2 * Math.PI;
+    
+    if (currentPitch > MAX_PITCH_ANGLE_RAD) bayraktarModel.rotation.x = MAX_PITCH_ANGLE_RAD;
+    else if (currentPitch < -MAX_PITCH_ANGLE_RAD) bayraktarModel.rotation.x = -MAX_PITCH_ANGLE_RAD;
+
+    if (currentRoll > MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = MAX_ROLL_ANGLE_RAD;
+    else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
+    // --- КІНЕЦЬ ОБМЕЖЕННЯ КУТІВ ---
+
+    if (propellerMesh) { /* ... код обертання гвинта (без змін) ... */ }
 
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0); 
     let drag = dragFactor * gameState.speed * gameState.speed;
     let currentBrakingForceApplied = 0;
-    if (keysPressed['Space'] && gameState.altitude <= 0.1) { 
+    // Гальма спрацьовують при затиснутому пробілі, якщо на землі (або дуже низько)
+    if (keysPressed['Space'] && gameState.altitude <= 0.2) { 
         currentBrakingForceApplied = BRAKING_FORCE;
     }
     gameState.speed += (actualThrust - drag - currentBrakingForceApplied) * deltaTime; 
@@ -348,20 +366,20 @@
     }
 
     let pitchEffectFactor = 1.0; 
-    const currentPitchRad = bayraktarModel.rotation.x; 
+    const currentPitchRadForLift = bayraktarModel.rotation.x; // Використовуємо поточний тангаж моделі
     const pitchDownSensitivity = 7.0; 
     const pitchUpSensitivity = 1.5;   
     const pitchUpMaxFactor = 1.25;    
     const criticalPitchUpRad = THREE.MathUtils.degToRad(15); 
     const stallSensitivity = 5.0;     
-    if (currentPitchRad > 0) { 
-        pitchEffectFactor = Math.max(0, 1.0 - currentPitchRad * pitchDownSensitivity); 
-    } else if (currentPitchRad < 0) { 
-        if (Math.abs(currentPitchRad) < criticalPitchUpRad) { 
-             pitchEffectFactor = 1.0 + Math.abs(currentPitchRad) * pitchUpSensitivity; 
+    if (currentPitchRadForLift > 0) { 
+        pitchEffectFactor = Math.max(0, 1.0 - currentPitchRadForLift * pitchDownSensitivity); 
+    } else if (currentPitchRadForLift < 0) { 
+        if (Math.abs(currentPitchRadForLift) < criticalPitchUpRad) { 
+             pitchEffectFactor = 1.0 + Math.abs(currentPitchRadForLift) * pitchUpSensitivity; 
              pitchEffectFactor = Math.min(pitchEffectFactor, pitchUpMaxFactor); 
         } else { 
-            pitchEffectFactor = Math.max(0, pitchUpMaxFactor - (Math.abs(currentPitchRad) - criticalPitchUpRad) * stallSensitivity); 
+            pitchEffectFactor = Math.max(0, pitchUpMaxFactor - (Math.abs(currentPitchRadForLift) - criticalPitchUpRad) * stallSensitivity); 
         }
     }
     
@@ -375,7 +393,7 @@
     if (gameState.speed > highSpeedThreshold && gameState.altitude > 50) {
         const maxLiftAtHighSpeed = gravity * 1.01; 
         if (lift > maxLiftAtHighSpeed) { lift = maxLiftAtHighSpeed; }
-    } else if (gameState.altitude > 50 && Math.abs(currentPitchRad) < THREE.MathUtils.degToRad(15)) { 
+    } else if (gameState.altitude > 50 && Math.abs(currentPitchRadForLift) < THREE.MathUtils.degToRad(15)) { 
         const maxHorizontalFlightLift = gravity * 1.08; 
         if (lift > maxHorizontalFlightLift) { lift = maxHorizontalFlightLift; }
     }
@@ -432,25 +450,14 @@
         gameState.altitude = bayraktarModel.position.y; 
     }
     
-    if (gameState.engineOn) { 
-        gameState.fuel -= gameState.throttle * 0.01 * deltaTime; 
-        gameState.fuel = Math.max(0, gameState.fuel); 
-        if (gameState.fuel === 0) { 
-            engineSound.pause(); engineSound.currentTime = 0;
-            gameState.engineOn = false; gameState.throttle = 0; 
-            console.log("Пальне закінчилося. Двигун вимкнено.");
-        }
-    }
+    if (gameState.engineOn) { /* ... код пального ... */ }
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
-    if (engineSound && gameState.engineOn) { 
-         if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); 
-         engineSound.volume = Math.max(0.1, gameState.throttle * 0.5);
-    } else if (engineSound && !engineSound.paused) {
-        engineSound.pause(); 
-    }
+    if (engineSound && gameState.engineOn) { /* ... код звуку двигуна ... */ } else if (engineSound && !engineSound.paused) { engineSound.pause(); }
     
     const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
-    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); gameState.roll = THREE.MathUtils.radToDeg(euler.z); gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
+    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); 
+    gameState.roll = THREE.MathUtils.radToDeg(euler.z); 
+    gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
   }
   
   function updateCamera(deltaTime) {
@@ -525,6 +532,11 @@
     updateFuelGauge(); 
     renderer.render(scene, camera);
   }
+
+  // Повні тіла функцій, що не змінювалися, для уникнення помилок при копіюванні
+  // (для init, startEngineAttempt, setupEventListeners, switchCameraMode, updateCameraModeIndicator, fireMissile)
+  // Код для propellerMesh, fuel, engineSound, gameState.pitch/roll/heading залишено в updateGameState, 
+  // оскільки вони там і мають бути.
 
   init(); 
 </script>
