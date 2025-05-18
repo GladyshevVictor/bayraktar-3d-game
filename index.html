@@ -345,7 +345,10 @@
   
   function updateGameState(deltaTime) {  
     if (!bayraktarModel) return;
-
+    const thrustAcceleration = 15; 
+    const dragFactor = 0.008; 
+    const baseLiftFactor = 0.025;  
+    const gravity = 9.81; 
     // --- Логіка зупинки двигуна утриманням R (потребує доопрацювання) ---
     // if (gameState.engineOn && (keysPressed['KeyR'] || keysPressed['к'])) { ... }
 
