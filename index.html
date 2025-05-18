@@ -142,10 +142,11 @@
 
   // Зміщення для камери "Вигляд з хвоста" (на гвинт)
   // Важливо: Ці значення, ймовірно, потребуватимуть точного налаштування під вашу модель!
-  // Позиція камери: далі назад і трохи вище, щоб охопити хвіст
-  const tailViewPositionOffset = new THREE.Vector3(0, 1.8, 9.5); 
+  // Позиція камери: на центральній осі хвоста, трохи вище точки з'єднання V-хвоста,
+  // і не надто далеко назад.
+  const tailViewPositionOffset = new THREE.Vector3(0, 1.3, 8.0); // <--- МІНЯТИ ТУТ (X_камери, Y_камери, Z_камери)
   // Точка, на яку дивиться камера (центр гвинта)
-  const tailViewLookAtOffset = new THREE.Vector3(0, 1.0, 5.5); 
+  const tailViewLookAtOffset = new THREE.Vector3(0, 1.0, 5.5); // <--- МІНЯТИ ТУТ (X_гвинта, Y_гвинта, Z_гвинта)
 
   // Зміщення для камери слідування
   const followCameraOffset = new THREE.Vector3(0, 6, 18); 
@@ -195,10 +196,10 @@
     const loadingDiv = document.getElementById('loading');
     const progressSpan = document.getElementById('progress');
 
-    gltfLoader.load( 'bayraktar.glb', // Переконайтеся, що файл моделі існує
+    gltfLoader.load( 'bayraktar.glb',
       function (gltf) {
         bayraktarModel = gltf.scene;
-        bayraktarModel.scale.set(2, 2, 2); // Налаштуйте масштаб під вашу модель
+        bayraktarModel.scale.set(2, 2, 2); 
         bayraktarModel.traverse(node => { if (node.isMesh) node.castShadow = true; });
         scene.add(bayraktarModel);
         if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
@@ -215,19 +216,20 @@
         // --- Блок для відладки позиції точки спостереження (гвинта) ---
         // Розкоментуйте його, щоб побачити червоний кубик там, куди дивиться камера в режимі TAIL_VIEW.
         // Налаштовуйте tailViewLookAtOffset та позицію кубика, поки кубик не опиниться на гвинті.
-        /* // Початок блоку для розкоментування
+        /* // Розкоментуйте цей рядок, щоб активувати debugCube
         if (bayraktarModel) { 
             console.log("Модель завантажена, додаємо куб для відладки точки гвинта.");
             const debugCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2); 
             const debugCubeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 }); 
             const debugCube = new THREE.Mesh(debugCubeGeo, debugCubeMat);
             
+            // Важливо: ці координати мають бути такими ж, як у tailViewLookAtOffset
             debugCube.position.set(tailViewLookAtOffset.x, tailViewLookAtOffset.y, tailViewLookAtOffset.z); 
             
             bayraktarModel.add(debugCube); 
             console.log("Куб для відладки додано до моделі Bayraktar на позицію:", debugCube.position);
         }
-        */ // Кінець блоку для розкоментування
+        */ // Розкоментуйте цей рядок, щоб активувати debugCube
         // --- Кінець блоку для відладки ---
 
       },
@@ -267,7 +269,7 @@
 
     if (bayraktarModel && currentCameraMode === CAMERA_MODES.ORBIT) {
       const desiredOrbitStartPos = bayraktarModel.position.clone().add(new THREE.Vector3(0,10,20).applyQuaternion(bayraktarModel.quaternion));
-      if (camera.position.distanceTo(desiredOrbitStartPos) > 1.0) { // Якщо позиція значно відрізняється
+      if (camera.position.distanceTo(desiredOrbitStartPos) > 1.0) { 
           camera.position.copy(desiredOrbitStartPos);
       }
       orbitControls.target.copy(bayraktarModel.position);
