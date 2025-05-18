@@ -12,14 +12,16 @@
       left: 50%;
       transform: translate(-50%, -50%);
       color: white;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      text-align: center;
     }
     #hud {
       position: absolute;
       top: 10px;
       left: 10px;
       color: white;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       font-size: 14px;
       background: rgba(0,0,0,0.4);
       padding: 8px;
@@ -31,22 +33,34 @@
       right: 20px;
       background: rgba(0, 0, 0, 0.5);
       color: white;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       font-size: 12px;
       padding: 10px 15px;
       border-radius: 10px;
       display: flex;
       flex-direction: column;
       gap: 6px;
-      width: 200px;
+      width: 220px; /* Трохи ширше для значень */
     }
-    #dashboard span { display: block; text-align: right; }
-    canvas#hudCanvas {
+    #dashboard div { display: flex; justify-content: space-between; }
+    #dashboard span { text-align: right; }
+    canvas#hudCanvas { /* Може бути використаний для прицілу тощо, поки не використовується */
       position: absolute;
       top: 0;
       left: 0;
       pointer-events: none;
       z-index: 1;
+    }
+    .key-info {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: white;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        background: rgba(0,0,0,0.4);
+        padding: 8px;
+        border-radius: 4px;
     }
   </style>
   <script type="importmap">
@@ -59,66 +73,386 @@
   </script>
 </head>
 <body>
-<canvas id="hudCanvas"></canvas>
-<div id="loading">Завантаження моделі Bayraktar... <span id="progress">0%</span></div>
+<canvas id="hudCanvas"></canvas> <div id="loading">Завантаження моделі Bayraktar... <span id="progress">0%</span></div>
 <div id="hud">Цілі знищено: <span id="score">0</span></div>
 <div id="dashboard">
   <div>Пальне: <span id="fuel">100</span>%</div>
   <div>Висота: <span id="altitude">0</span> м</div>
   <div>Кут тангажа: <span id="pitch">0</span>°</div>
+  <div>Кут крену: <span id="roll">0</span>°</div>
   <div>Швидкість: <span id="speed">0</span> км/год</div>
   <div>Курс: <span id="heading">0</span>°</div>
   <div>Вертикальна швидкість: <span id="vspeed">0</span> м/хв</div>
   <div>Режим газу: <span id="throttle">0</span>%</div>
   <div>Обороти двигуна: <span id="rpm">0</span> об/хв</div>
 </div>
+<div class="key-info">
+    Керування:<br>
+    W/S: Тангаж (вгору/вниз)<br>
+    A/D: Крен (ліворуч/праворуч)<br>
+    Q/E: рискання (вліво/вправо)<br>
+    Shift: Газ +<br>
+    Ctrl: Газ -<br>
+    Space: Пуск ракети
+</div>
+
 <audio id="engineSound" src="diesel-drive-by-3-mz000007-47135.mp3" loop></audio>
 <audio id="startSound" src="engine-start-86242.mp3"></audio>
 <audio id="missileSound" src="missile-firing-fl-106655.mp3"></audio>
+
 <script type="module">
   import * as THREE from 'three';
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-  let scene, camera, renderer;
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x202840);
+  let scene, camera, renderer, clock;
+  let bayraktarModel, mixer; // mixer для анімацій моделі, якщо є
+  
+  // Елементи аудіо
+  const engineSound = document.getElementById('engineSound');
+  const startSound = document.getElementById('startSound');
+  const missileSound = document.getElementById('missileSound');
 
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
-  camera.position.set(0, 150, 300);
-  camera.lookAt(0, 0, 0);
+  // Стан гри та керування
+  const gameState = {
+    fuel: 100,
+    altitude: 0,
+    pitch: 0,
+    roll: 0,
+    speed: 0, // в м/с
+    heading: 0,
+    vSpeed: 0, // в м/с
+    throttle: 0, // 0-1
+    rpm: 0,
+    score: 0,
+    maxSpeed: 150, // м/с (приблизно 540 км/год)
+    minSpeedTakeoff: 25, // м/с для взльоту
+    engineOn: false
+  };
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
+  const keysPressed = {};
 
-  const light = new THREE.HemisphereLight(0xffffff, 0x444444);
-  scene.add(light);
+  function init() {
+    clock = new THREE.Clock();
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB); // Синє небо
 
-  const loader = new THREE.TextureLoader();
-  const runwayTexture = loader.load('runway_texture.png');
-  runwayTexture.wrapS = THREE.ClampToEdgeWrapping;
-  runwayTexture.wrapT = THREE.ClampToEdgeWrapping;
-  runwayTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  runwayTexture.minFilter = THREE.LinearMipMapLinearFilter;
-  runwayTexture.magFilter = THREE.LinearFilter;
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000); // Збільшено дальність
+    camera.position.set(0, 5, 15); // Позиція позаду і трохи вище моделі
 
-  const runwayWidth = 400;
-  const runwayLength = 2000;
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true; // Тіні
+    document.body.appendChild(renderer.domElement);
 
-  const runway = new THREE.Mesh(
-    new THREE.PlaneGeometry(runwayWidth, runwayLength),
-    new THREE.MeshStandardMaterial({ map: runwayTexture })
-  );
-  runway.rotation.x = -Math.PI / 2;
-  runway.position.y = 0;
-  scene.add(runway);
+    // Освітлення
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    directionalLight.position.set(100, 100, 50);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    scene.add(directionalLight);
+
+    // Земля/Злітна смуга (більш детально)
+    const textureLoader = new THREE.TextureLoader();
+    const runwayTexture = textureLoader.load(
+        'runway_texture.png',
+        undefined, // onSuccess
+        undefined, // onProgress
+        () => { // onError
+            console.warn("Runway texture not found. Using plain color.");
+        }
+    );
+    runwayTexture.wrapS = THREE.RepeatWrapping;
+    runwayTexture.wrapT = THREE.RepeatWrapping;
+    runwayTexture.repeat.set(5, 20); // Повторення текстури
+    runwayTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+    const runwayMaterial = new THREE.MeshStandardMaterial({ 
+        map: runwayTexture, 
+        color: runwayTexture ? 0xffffff : 0x555555, // Колір, якщо текстура не завантажилась
+        roughness: 0.8, 
+        metalness: 0.2 
+    });
+
+    const runwayWidth = 200;
+    const runwayLength = 3000;
+    const runway = new THREE.Mesh(
+      new THREE.PlaneGeometry(runwayWidth, runwayLength),
+      runwayMaterial
+    );
+    runway.rotation.x = -Math.PI / 2;
+    runway.receiveShadow = true;
+    scene.add(runway);
+
+    // Додамо трохи ландшафту
+    const groundGeometry = new THREE.PlaneGeometry(40000, 40000);
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x3E8948, roughness: 1 }); // Зелений колір
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.1; // Трохи нижче злітної смуги
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+
+    // Завантаження моделі
+    const gltfLoader = new GLTFLoader();
+    const loadingDiv = document.getElementById('loading');
+    const progressSpan = document.getElementById('progress');
+
+    gltfLoader.load(
+      'bayraktar.glb', // !!! ЗАМІНІТЬ НА ШЛЯХ ДО ВАШОЇ МОДЕЛІ !!!
+      function (gltf) {
+        bayraktarModel = gltf.scene;
+        bayraktarModel.scale.set(2, 2, 2); // Налаштуйте масштаб під вашу модель
+        bayraktarModel.traverse(function (node) {
+          if (node.isMesh) {
+            node.castShadow = true;
+            // node.receiveShadow = true; // Зазвичай не потрібно для літака
+          }
+        });
+        scene.add(bayraktarModel);
+        
+        // Якщо у моделі є анімації
+        if (gltf.animations && gltf.animations.length) {
+          mixer = new THREE.AnimationMixer(bayraktarModel);
+          // const action = mixer.clipAction(gltf.animations[0]); // Приклад: програти першу анімацію
+          // action.play();
+        }
+
+        loadingDiv.style.display = 'none';
+        try {
+            startSound.play().then(() => {
+                engineSound.loop = true;
+                engineSound.volume = 0.1; // Початкова гучність
+                engineSound.play();
+                gameState.engineOn = true;
+            }).catch(e => console.warn("Audio play failed, user interaction needed?", e));
+        } catch (e) {
+            console.error("Error playing sounds:", e);
+        }
+      },
+      function (xhr) {
+        if (xhr.lengthComputable) {
+          const percentComplete = (xhr.loaded / xhr.total) * 100;
+          progressSpan.textContent = Math.round(percentComplete) + '%';
+        }
+      },
+      function (error) {
+        console.error('An error happened during GLTF loading:', error);
+        loadingDiv.textContent = 'Помилка завантаження моделі. Використовується плейсхолдер.';
+        progressSpan.textContent = '';
+        // Створюємо куб-плейсхолдер, якщо модель не завантажилась
+        const placeholderGeo = new THREE.BoxGeometry(5, 1, 3);
+        const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat);
+        bayraktarModel.position.y = 2.5;
+        scene.add(bayraktarModel);
+      }
+    );
+
+    setupEventListeners();
+    animate();
+  }
+
+  function setupEventListeners() {
+    window.addEventListener('resize', onWindowResize, false);
+    document.addEventListener('keydown', (event) => { keysPressed[event.key.toLowerCase()] = true; });
+    document.addEventListener('keyup', (event) => { 
+        keysPressed[event.key.toLowerCase()] = false; 
+        // Для дії по відпусканню клавіші, наприклад, стрільба
+        if (event.code === 'Space' && bayraktarModel && gameState.altitude > 10) { // Стріляти тільки в повітрі
+            fireMissile();
+        }
+    });
+  }
+
+  function fireMissile() {
+    if (gameState.fuel > 1) { // Потрібно пальне для пострілу (чи окремий боєзапас)
+        gameState.score++;
+        gameState.fuel -= 0.5; // Витрата пального на постріл (приклад)
+        try {
+            missileSound.currentTime = 0;
+            missileSound.play().catch(e => console.warn("Missile sound play failed", e));
+        } catch (e) {
+            console.error("Error playing missile sound:", e);
+        }
+
+        // Тут можна додати логіку створення об'єкта ракети
+        // const missileGeo = new THREE.SphereGeometry(0.2, 8, 8);
+        // const missileMat = new THREE.MeshBasicMaterial({color: 0xffff00});
+        // const missile = new THREE.Mesh(missileGeo, missileMat);
+        // missile.position.copy(bayraktarModel.position);
+        // missile.quaternion.copy(bayraktarModel.quaternion);
+        // scene.add(missile);
+        // // І логіку її руху
+    }
+  }
+
+  function updateGameState(deltaTime) {
+    if (!bayraktarModel) return;
+
+    const thrustAcceleration = 20; // м/с^2 при 100% газу
+    const dragFactor = 0.005; // Коефіцієнт опору
+    const liftFactor = 0.05; // Коефіцієнт підйомної сили
+    const gravity = 9.81; 
+    const rotationSpeed = 1.5 * deltaTime; // Радіан/сек * deltaTime
+
+    // Керування газом
+    if (keysPressed['shift'] && gameState.engineOn) {
+      gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
+    }
+    if (keysPressed['control'] || keysPressed['ctrl'] && gameState.engineOn) {
+      gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
+    }
+    
+    if (!gameState.engineOn && gameState.throttle > 0) gameState.throttle = 0;
+
+
+    // Керування напрямком
+    let pitchChange = 0;
+    let rollChange = 0;
+    let yawChange = 0;
+
+    if (keysPressed['w']) pitchChange = rotationSpeed;
+    if (keysPressed['s']) pitchChange = -rotationSpeed;
+    if (keysPressed['a']) rollChange = rotationSpeed; // Крен вліво
+    if (keysPressed['d']) rollChange = -rotationSpeed; // Крен вправо
+    if (keysPressed['q']) yawChange = rotationSpeed;
+    if (keysPressed['e']) yawChange = -rotationSpeed;
+
+    // Застосування обертань до моделі
+    // Зберігаємо поточний напрямок "вперед" моделі
+    const forward = new THREE.Vector3(0, 0, -1);
+    forward.applyQuaternion(bayraktarModel.quaternion);
+
+    // Тангаж (Pitch) - навколо локальної осі X моделі
+    bayraktarModel.rotateX(pitchChange);
+    // Крен (Roll) - навколо локальної осі Z моделі
+    bayraktarModel.rotateZ(rollChange);
+     // Рискання (Yaw) - навколо локальної осі Y моделі
+    bayraktarModel.rotateY(yawChange);
+
+
+    // Фізика (дуже спрощена)
+    let actualThrust = gameState.throttle * thrustAcceleration;
+    
+    // Опір повітря залежить від квадрата швидкості
+    let drag = dragFactor * gameState.speed * gameState.speed;
+    
+    // Зміна швидкості
+    gameState.speed += (actualThrust - drag) * deltaTime;
+    gameState.speed = Math.max(0, gameState.speed); // Швидкість не може бути від'ємною
+    
+    // Рух вперед
+    const moveDirection = new THREE.Vector3(0, 0, -1); // Рух вздовж локальної осі Z
+    moveDirection.applyQuaternion(bayraktarModel.quaternion);
+    const moveDistance = gameState.speed * deltaTime;
+    bayraktarModel.position.addScaledVector(moveDirection, moveDistance);
+
+    // Підйомна сила і гравітація
+    // Спрощена підйомна сила, що залежить від швидкості та кута атаки (частково від тангажу)
+    // Для простоти, припустимо, що частина тангажу дає вертикальну компоненту швидкості
+    // Реальна підйомна сила складніша і залежить від кута атаки та форми крила
+    let lift = liftFactor * gameState.speed * gameState.speed * Math.cos(bayraktarModel.rotation.x); // cos(pitch) 
+    
+    // Вертикальна швидкість
+    if (gameState.altitude > 0 || (gameState.altitude <=0 && lift > gravity)) { // Якщо в повітрі або тяга дозволяє злетіти
+        gameState.vSpeed += (lift - gravity) * deltaTime;
+    } else {
+        gameState.vSpeed = 0; // На землі
+    }
+    
+    // Якщо швидкість замала на землі - не взлітаємо
+    if (gameState.altitude <= 0.1 && gameState.speed < gameState.minSpeedTakeoff && lift < gravity) {
+        gameState.vSpeed = Math.max(0, gameState.vSpeed); // Не провалюватись під землю
+        bayraktarModel.position.y = Math.max(0, bayraktarModel.position.y); // Тримати на землі
+    }
+
+
+    bayraktarModel.position.y += gameState.vSpeed * deltaTime;
+    
+    // Обмеження висоти (не падати крізь землю)
+    if (bayraktarModel.position.y < 0) {
+      bayraktarModel.position.y = 0;
+      gameState.vSpeed = 0;
+      // Можна додати логіку "аварії" якщо швидкість велика при зіткненні
+    }
+    gameState.altitude = bayraktarModel.position.y;
+
+
+    // Пальне
+    if (gameState.engineOn) {
+        gameState.fuel -= gameState.throttle * 0.01 * deltaTime; // Витрата пального
+        gameState.fuel = Math.max(0, gameState.fuel);
+        if (gameState.fuel === 0) {
+            gameState.engineOn = false; // Двигун вимикається
+            gameState.throttle = 0;
+            engineSound.pause();
+        }
+    }
+    
+    // RPM
+    gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
+    if (engineSound) {
+        engineSound.volume = Math.max(0.1, gameState.throttle * 0.5); // Гучність двигуна від газу
+        // engineSound.playbackRate = 0.5 + gameState.throttle; // Швидкість програвання від газу (може звучати дивно)
+    }
+    
+    // Оновлення кутів для HUD
+    const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ'); // YXZ порядок для авіації часто
+    gameState.pitch = THREE.MathUtils.radToDeg(euler.x);
+    gameState.roll = THREE.MathUtils.radToDeg(euler.z);
+    gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360; // Нормалізувати 0-360
+
+
+    // Оновлення позиції камери (просте слідування)
+    const cameraOffset = new THREE.Vector3(0, 4, 12); // Зміщення камери відносно моделі
+    const cameraTargetPosition = new THREE.Vector3();
+    cameraTargetPosition.applyMatrix4(bayraktarModel.matrixWorld); // Глобальна позиція моделі
+    
+    const desiredCameraPosition = cameraOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+    camera.position.lerp(desiredCameraPosition, 0.1); // Плавне слідування
+    camera.lookAt(bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0))); // Дивитись трохи вище центру моделі
+  }
+
+  function updateHUD() {
+    document.getElementById('fuel').textContent = gameState.fuel.toFixed(1) + '%';
+    document.getElementById('altitude').textContent = gameState.altitude.toFixed(0) + ' м';
+    document.getElementById('pitch').textContent = gameState.pitch.toFixed(1) + '°';
+    document.getElementById('roll').textContent = gameState.roll.toFixed(1) + '°';
+    document.getElementById('speed').textContent = (gameState.speed * 3.6).toFixed(0) + ' км/год'; // м/с в км/год
+    document.getElementById('heading').textContent = gameState.heading.toFixed(0) + '°';
+    document.getElementById('vspeed').textContent = (gameState.vSpeed * 60).toFixed(0) + ' м/хв'; // м/с в м/хв
+    document.getElementById('throttle').textContent = (gameState.throttle * 100).toFixed(0) + '%';
+    document.getElementById('rpm').textContent = gameState.rpm.toFixed(0) + ' об/хв';
+    document.getElementById('score').textContent = gameState.score;
+  }
+
+  function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
 
   function animate() {
     requestAnimationFrame(animate);
+    const deltaTime = clock.getDelta();
+
+    if (mixer) { // Якщо є анімації моделі
+      mixer.update(deltaTime);
+    }
+
+    updateGameState(deltaTime);
+    updateHUD();
+    
     renderer.render(scene, camera);
   }
 
-  animate();
+  init();
+
 </script>
 </body>
 </html>
