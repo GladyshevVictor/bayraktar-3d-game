@@ -75,7 +75,10 @@
 
   let scene, camera, renderer, clock, orbitControls;
   let bayraktarModel, mixer;
-  let propellerMesh = null; // Змінна для гвинта
+  let propellerMesh = null; 
+  let initialPropellerQuaternion = null; // Для повернення гвинта на місце
+  const PROPELLER_RETURN_SPEED = 0.05; // Швидкість повернення гвинта
+
   const modelBoundingBox = new THREE.Box3(); 
   const engineSound = document.getElementById('engineSound');
   const startSound = document.getElementById('startSound');
@@ -140,20 +143,21 @@
         bayraktarModel.scale.set(2, 2, 2); 
         bayraktarModel.position.set(0, 0.5, 0); 
         
-        propellerMesh = null; // Скидаємо перед пошуком
+        propellerMesh = null; 
         bayraktarModel.traverse(node => { 
             if (node.isMesh) {
                 node.castShadow = true; 
-                // console.log("Mesh in model:", node.name); // Для відладки імен мешів
             }
-            // Шукаємо гвинт за ім'ям "propeller"
             if (node.name === "propeller") { 
                 propellerMesh = node;
                 console.log("Propeller mesh FOUND:", propellerMesh);
+                if (propellerMesh) { // Зберігаємо початкову орієнтацію, якщо гвинт знайдено
+                    initialPropellerQuaternion = propellerMesh.quaternion.clone();
+                }
             }
         });
         if (!propellerMesh) {
-            console.warn("ВАЖЛИВО: Меш гвинта з ім'ям 'propeller' НЕ ЗНАЙДЕНО! Анімація гвинта не працюватиме. Перевірте назву у вашій 3D-моделі.");
+            console.warn("ВАЖЛИВО: Меш гвинта з ім'ям 'propeller' НЕ ЗНАЙДЕНО! Анімація гвинта не працюватиме.");
         }
 
         scene.add(bayraktarModel);
@@ -316,12 +320,23 @@
     bayraktarModel.rotateY(yawChange);
 
     // --- ОБЕРТАННЯ ГВИНТА ---
-    if (propellerMesh && gameState.engineOn && gameState.rpm > 0) {
-        const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI; 
-        const propellerRotationChange = rotationSpeedRPM * deltaTime;
-        // Спробуйте .rotateX() або .rotateY(), якщо Z не підходить.
-        // Якщо напрямок не той, змініть знак: propellerMesh.rotateZ(-propellerRotationChange);
-        propellerMesh.rotateY(propellerRotationChange); 
+    if (propellerMesh) { // Переконуємося, що гвинт знайдено
+        if (gameState.engineOn && gameState.rpm > 0) {
+            const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI; 
+            const propellerRotationChange = rotationSpeedRPM * deltaTime;
+            // ВИКОРИСТОВУЄМО Y, ЯК ВИ ВКАЗАЛИ
+            propellerMesh.rotateY(propellerRotationChange); 
+            // Якщо напрямок не той, спробуйте: propellerMesh.rotateY(-propellerRotationChange);
+        } else if (!gameState.engineOn && initialPropellerQuaternion) {
+            // Якщо двигун вимкнено, плавно повертаємо гвинт до початкової орієнтації
+            // Перевіряємо, чи кватерніони не надто близькі, щоб уникнути нескінченного slerp
+            if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) {
+                 propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
+            } else {
+                // Якщо досить близько, просто встановлюємо в початкове положення
+                propellerMesh.quaternion.copy(initialPropellerQuaternion);
+            }
+        }
     }
     // --- КІНЕЦЬ ОБЕРТАННЯ ГВИНТА ---
 
