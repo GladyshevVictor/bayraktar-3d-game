@@ -7,40 +7,15 @@
     body { margin: 0; overflow: hidden; background: #000; }
     canvas { display: block; }
     #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-family: Arial, sans-serif; font-size: 18px; text-align: center; }
-    #hud { 
-      position: absolute; 
-      top: 10px; 
-      left: 10px; 
-      color: white; 
-      font-family: Arial, sans-serif; 
-      font-size: 14px; 
-      background: rgba(0,0,0,0.4); 
-      padding: 8px; 
-      border-radius: 4px; 
-      display: flex; 
-      flex-direction: column; /* Змінено для розміщення індикаторів один під одним */
-      gap: 8px; 
-    }
+    #hud { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial, sans-serif; font-size: 14px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; display: flex; flex-direction: column; gap: 8px; }
     #dashboard { position: absolute; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.7); color: white; font-family: Arial, sans-serif; font-size: 12px; padding: 10px 15px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; width: 230px; }
     #dashboard div:not(#fuelGaugeContainer):not(#fuelGauge) { display: flex; justify-content: space-between; } 
     #dashboard span { text-align: right; }
     canvas#hudCanvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
     .key-info { position: absolute; top: 10px; right: 10px; color: white; font-family: Arial, sans-serif; font-size: 12px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px;}
     #cameraModeIndicator { }
-    /* --- СТИЛІ ДЛЯ ІНДИКАТОРА АЕРОДРОМУ --- */
-    #aerodromeIndicator {
-      color: #00ff00; /* Зелений колір для індикатора аеродрому */
-    }
-    #aerodromeArrow {
-      display: inline-block;
-      transform-origin: center center;
-      font-weight: bold;
-      margin-right: 5px;
-      /* transition: transform 0.1s linear; Плавний поворот, якщо потрібно */
-    }
-    /* --- КІНЕЦЬ СТИЛІВ ДЛЯ ІНДИКАТОРА АЕРОДРОМУ --- */
-
-    /* --- СТИЛІ ДЛЯ ІНДИКАТОРА ПАЛИВА (без змін) --- */
+    #aerodromeIndicator { color: #00ff00; }
+    #aerodromeArrow { display: inline-block; transform-origin: center center; font-weight: bold; margin-right: 5px; }
     #fuelGaugeContainer { width: 200px; margin-top: 15px; margin-bottom: 5px; position: relative; display: flex; flex-direction: column; align-items: center;}
     #fuelGauge { width: 160px; height: 80px; border-radius: 160px 160px 0 0; background: conic-gradient(from -90deg at 50% 100%, #ff4500 0% 12.5%, #ffd700 12.5% 25%, #32cd32 25% 50%, #555c62 50% 100%); border: 2px solid #888; border-bottom: none; position: relative; overflow: hidden; box-sizing: border-box; }
     #fuelGauge::before { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 130px; height: 65px; background: rgba(0, 0, 0, 0.7); border-radius: 130px 130px 0 0; z-index: 1; }
@@ -112,7 +87,7 @@
   const startSound = document.getElementById('startSound');
   const missileSound = document.getElementById('missileSound');
   let fuelNeedle, fuelValueDigital; 
-  let aerodromeArrowElement, aerodromeDistanceElement; // Для індикатора аеродрому
+  let aerodromeArrowElement, aerodromeDistanceElement; 
 
   const KNOTS_TO_MPS = 0.514444; 
   const NORMAL_TAKEOFF_SPEED_KNOTS = 72;
@@ -134,7 +109,7 @@
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(MAX_PITCH_ANGLE_DEG);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(MAX_ROLL_ANGLE_DEG);
 
-  const aerodromePosition = new THREE.Vector3(0, 0, 0); // <<< ВСТАНОВІТЬ КООРДИНАТИ ВАШОГО АЕРОДРОМУ (X, Y, Z)
+  const aerodromePosition = new THREE.Vector3(0, 0, 0); 
 
   const gameState = { 
     fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, 
@@ -189,6 +164,7 @@
             if (node.isMesh) { node.castShadow = true; }
             if (node.name === "propeller") { 
                 propellerMesh = node;
+                console.log("Propeller mesh FOUND:", propellerMesh);
                 if (propellerMesh) { initialPropellerQuaternion = propellerMesh.quaternion.clone(); }
             }
         });
@@ -210,78 +186,10 @@
     setupEventListeners();
     updateCameraModeIndicator(); 
     updateFuelGauge(); 
-    updateAerodromeIndicator(); // Початкове оновлення індикатора аеродрому
+    updateAerodromeIndicator();
     animate();
   }
   
-  function startEngineAttempt() { /* ... код без змін ... */ }
-  function setupEventListeners() { /* ... код без змін ... */ }
-  function switchCameraMode() { /* ... код без змін ... */ }
-  function updateCameraModeIndicator() { /* ... код без змін ... */ }
-  function fireMissile() { /* ... код без змін ... */ }
-  function updateGameState(deltaTime) { /* ... код з останніми виправленнями для посадки ... */ }
-  function updateCamera(deltaTime) { /* ... код без змін ... */ }
-  function updateHUD() { /* ... код без змін ... */ }
-  function onWindowResize() { /* ... код без змін ... */ }
-  function updateFuelGauge() { /* ... код без змін ... */ }
-
-  // НОВА ФУНКЦІЯ ДЛЯ ІНДИКАТОРА АЕРОДРОМУ
-  function updateAerodromeIndicator() {
-    if (!bayraktarModel || !aerodromeArrowElement || !aerodromeDistanceElement) {
-        if (aerodromeArrowElement) aerodromeArrowElement.textContent = '-';
-        if (aerodromeDistanceElement) aerodromeDistanceElement.textContent = '---- м';
-        return;
-    }
-
-    const distance = bayraktarModel.position.distanceTo(aerodromePosition);
-    aerodromeDistanceElement.textContent = Math.round(distance) + ' м';
-
-    // Вектор напрямку від літака до аеродрому
-    const dirToAerodromeWorld = new THREE.Vector3().subVectors(aerodromePosition, bayraktarModel.position);
-    dirToAerodromeWorld.y = 0; // Проектуємо на горизонтальну площину
-    dirToAerodromeWorld.normalize();
-
-    // Вектор "вперед" для літака, також на горизонтальній площині
-    const aircraftForwardWorld = new THREE.Vector3(0, 0, 1); // Локальний "вперед" для моделі (якщо +Z це перед)
-                                                          // Якщо -Z це перед, то (0,0,-1)
-    aircraftForwardWorld.applyQuaternion(bayraktarModel.quaternion);
-    aircraftForwardWorld.y = 0;
-    aircraftForwardWorld.normalize();
-
-    if (dirToAerodromeWorld.lengthSq() === 0 || aircraftForwardWorld.lengthSq() === 0) { // Якщо ми точно над/під або щось не так
-        aerodromeArrowElement.style.transform = 'rotate(0deg)';
-        aerodromeArrowElement.textContent = (distance < 50) ? '📍' : '-'; // Іконка, якщо близько
-        return;
-    }
-    
-    let angleToTarget = aircraftForwardWorld.angleTo(dirToAerodromeWorld);
-    const cross = new THREE.Vector3().crossVectors(aircraftForwardWorld, dirToAerodromeWorld);
-    if (cross.y < 0) { // Визначаємо знак кута (ліворуч чи праворуч)
-        angleToTarget = -angleToTarget;
-    }
-    
-    const angleDeg = THREE.MathUtils.radToDeg(angleToTarget);
-    
-    aerodromeArrowElement.textContent = '↑'; 
-    aerodromeArrowElement.style.transform = `rotate(${angleDeg}deg)`;
-  }
-
-  function animate() {
-    requestAnimationFrame(animate);
-    const deltaTime = clock.getDelta();
-    if (mixer) mixer.update(deltaTime);
-    if(bayraktarModel) { 
-        updateGameState(deltaTime);
-        updateCamera(deltaTime);
-    }
-    updateHUD();
-    updateFuelGauge(); 
-    updateAerodromeIndicator(); // Оновлюємо індикатор аеродрому
-    renderer.render(scene, camera);
-  }
-
-  // Вставляю повні тіла функцій, щоб уникнути помилок дублювання
-  // (ті, що були позначені /* ... код без змін ... */)
   function startEngineAttempt() {
     if (!bayraktarModel) return;
     if (!gameState.engineOn) { 
@@ -371,6 +279,7 @@
 
   function updateGameState(deltaTime) { 
     if (!bayraktarModel) return;
+
     if (gameState.engineOn && (keysPressed['r'] || keysPressed['к'])) { 
         engineKeyHoldTime += deltaTime;
         if (engineKeyHoldTime >= SHUTDOWN_HOLD_DURATION) {
@@ -380,78 +289,149 @@
             rKeyJustPressedForStart = false; 
         }
     }
-    const thrustAcceleration = 15; const dragFactor = 0.008; const baseLiftFactor = 0.025; 
-    const gravity = 9.81; const rotationSpeed = 1.5 * deltaTime; 
-    let pitchChange = 0; let rollChange = 0; let yawChange = 0; 
+    
+    const thrustAcceleration = 15; 
+    const dragFactor = 0.008;   
+    const baseLiftFactor = 0.025; 
+    const gravity = 9.81;
+    const rotationSpeedInput = 1.5 * deltaTime; 
+    
+    let pitchChange = 0; 
+    let rollChange = 0;  
+    let yawChange = 0; 
+    
     const playerIsPitchingUp = keysPressed['KeyS']; 
     const groundControlSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.7; 
     const groundPitchSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.4; 
+
     if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) { 
-        if (keysPressed['KeyW']) { pitchChange = rotationSpeed; } if (keysPressed['KeyS']) { pitchChange = -rotationSpeed; } 
-        if (keysPressed['KeyA']) { rollChange = rotationSpeed; } if (keysPressed['KeyD']) { rollChange = -rotationSpeed; }  
+        if (keysPressed['KeyW']) { pitchChange = rotationSpeedInput; }  
+        if (keysPressed['KeyS']) { pitchChange = -rotationSpeedInput; } 
+        if (keysPressed['KeyA']) { rollChange = rotationSpeedInput; }   
+        if (keysPressed['KeyD']) { rollChange = -rotationSpeedInput; }  
     } else {
         rollChange = 0; 
-        if (keysPressed['KeyS'] && gameState.speed > groundPitchSpeedThreshold) { if (bayraktarModel.rotation.x > -MAX_PITCH_ANGLE_RAD * 0.6) { pitchChange = -rotationSpeed * 0.3; } } 
-        else if (keysPressed['KeyW'] && gameState.speed > groundPitchSpeedThreshold) { if (bayraktarModel.rotation.x < MAX_PITCH_ANGLE_RAD * 0.3) { pitchChange = rotationSpeed * 0.2; } }
-        else { pitchChange = 0; }
+        if (keysPressed['KeyS'] && gameState.speed > groundPitchSpeedThreshold) { 
+            if (bayraktarModel.rotation.x > -MAX_PITCH_ANGLE_RAD * 0.6) {
+                 pitchChange = -rotationSpeedInput * 0.3; 
+            }
+        } else if (keysPressed['KeyW'] && gameState.speed > groundPitchSpeedThreshold) { 
+             if (bayraktarModel.rotation.x < MAX_PITCH_ANGLE_RAD * 0.3) {
+                pitchChange = rotationSpeedInput * 0.2; 
+            }
+        } else { pitchChange = 0; }
     }
     const yawEffectiveness = (gameState.altitude > 0.1) ? 1.0 : 0.6;
-    if (keysPressed['KeyQ']) { yawChange = rotationSpeed * yawEffectiveness; } if (keysPressed['KeyE']) { yawChange = -rotationSpeed * yawEffectiveness; }
+    if (keysPressed['KeyQ']) { yawChange = rotationSpeedInput * yawEffectiveness; } 
+    if (keysPressed['KeyE']) { yawChange = -rotationSpeedInput * yawEffectiveness; }
+    
     if (gameState.engineOn) {
         if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
         if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
     }
     if (!gameState.engineOn && gameState.throttle > 0 && !(keysPressed['r'] || keysPressed['к'])) { gameState.throttle = 0; }
-    bayraktarModel.rotateX(pitchChange); bayraktarModel.rotateZ(rollChange); bayraktarModel.rotateY(yawChange);
-    let currentPitch = bayraktarModel.rotation.x; let currentRoll = bayraktarModel.rotation.z;
+            
+    bayraktarModel.rotateX(pitchChange); 
+    bayraktarModel.rotateZ(rollChange); 
+    bayraktarModel.rotateY(yawChange);
+
+    let currentPitch = bayraktarModel.rotation.x;
+    let currentRoll = bayraktarModel.rotation.z;
     while (currentPitch > Math.PI) currentPitch -= 2 * Math.PI; while (currentPitch < -Math.PI) currentPitch += 2 * Math.PI;
     while (currentRoll > Math.PI) currentRoll -= 2 * Math.PI; while (currentRoll < -Math.PI) currentRoll += 2 * Math.PI;
     if (currentPitch > MAX_PITCH_ANGLE_RAD) bayraktarModel.rotation.x = MAX_PITCH_ANGLE_RAD;
     else if (currentPitch < -MAX_PITCH_ANGLE_RAD) bayraktarModel.rotation.x = -MAX_PITCH_ANGLE_RAD;
     if (currentRoll > MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = MAX_ROLL_ANGLE_RAD;
     else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
+
     if (propellerMesh) {
         if (gameState.engineOn && gameState.rpm > 0) {
-            const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI; const propellerRotationChange = rotationSpeedRPM * deltaTime;
+            const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI; 
+            const propellerRotationChange = rotationSpeedRPM * deltaTime;
             propellerMesh.rotateY(propellerRotationChange); 
         } else if (!gameState.engineOn && initialPropellerQuaternion) {
-            if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) { propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED); }
-            else { propellerMesh.quaternion.copy(initialPropellerQuaternion); }
+            if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) {
+                 propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
+            } else {
+                propellerMesh.quaternion.copy(initialPropellerQuaternion);
+            }
         }
     }
+
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0); 
     let drag = dragFactor * gameState.speed * gameState.speed;
     let currentBrakingForceApplied = 0;
-    if (keysPressed['Space'] && gameState.altitude <= 0.2) { currentBrakingForceApplied = BRAKING_FORCE; }
-    gameState.speed += (actualThrust - drag - currentBrakingForceApplied) * deltaTime; gameState.speed = Math.max(0, gameState.speed); 
+    if (keysPressed['Space'] && gameState.altitude <= 0.2) { 
+        currentBrakingForceApplied = BRAKING_FORCE;
+    }
+    gameState.speed += (actualThrust - drag - currentBrakingForceApplied) * deltaTime; 
+    gameState.speed = Math.max(0, gameState.speed); 
+    
     const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion); 
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
+    
     let currentLiftFactor = baseLiftFactor;
-    const groundEffectAltitude = 3; const groundEffectBoost = 1.10; 
-    if (gameState.altitude > 0.1 && gameState.altitude < groundEffectAltitude && gameState.speed > STALL_SPEED_MPS * 0.8 && gameState.vSpeed <= 0.1) { currentLiftFactor *= groundEffectBoost; }
-    let pitchEffectFactor = 1.0; const currentPitchRadForLift = bayraktarModel.rotation.x; 
-    const pitchDownSensitivity = 7.0; const pitchUpSensitivity = 1.5; const pitchUpMaxFactor = 1.25;    
-    const criticalPitchUpRad = THREE.MathUtils.degToRad(15); const stallSensitivity = 5.0;     
-    if (currentPitchRadForLift > 0) { pitchEffectFactor = Math.max(0, 1.0 - currentPitchRadForLift * pitchDownSensitivity); } 
-    else if (currentPitchRadForLift < 0) { 
-        if (Math.abs(currentPitchRadForLift) < criticalPitchUpRad) { pitchEffectFactor = 1.0 + Math.abs(currentPitchRadForLift) * pitchUpSensitivity; pitchEffectFactor = Math.min(pitchEffectFactor, pitchUpMaxFactor); } 
-        else { pitchEffectFactor = Math.max(0, pitchUpMaxFactor - (Math.abs(currentPitchRadForLift) - criticalPitchUpRad) * stallSensitivity); }
+    const groundEffectAltitude = 3; 
+    const groundEffectBoost = 1.10; 
+    if (gameState.altitude > 0.1 && gameState.altitude < groundEffectAltitude && 
+        gameState.speed > STALL_SPEED_MPS * 0.8 && gameState.vSpeed <= 0.1) { 
+        currentLiftFactor *= groundEffectBoost;
     }
-    let calculatedLift = 0; if (gameState.speed > STALL_SPEED_MPS) { calculatedLift = currentLiftFactor * gameState.speed * gameState.speed * pitchEffectFactor; }
+
+    let pitchEffectFactor = 1.0; 
+    const currentPitchRadForLift = bayraktarModel.rotation.x; 
+    const pitchDownSensitivity = 7.0; 
+    const pitchUpSensitivity = 1.5;   
+    const pitchUpMaxFactor = 1.25;    
+    const criticalPitchUpRad = THREE.MathUtils.degToRad(15); 
+    const stallSensitivity = 5.0;     
+    if (currentPitchRadForLift > 0) { 
+        pitchEffectFactor = Math.max(0, 1.0 - currentPitchRadForLift * pitchDownSensitivity); 
+    } else if (currentPitchRadForLift < 0) { 
+        if (Math.abs(currentPitchRadForLift) < criticalPitchUpRad) { 
+             pitchEffectFactor = 1.0 + Math.abs(currentPitchRadForLift) * pitchUpSensitivity; 
+             pitchEffectFactor = Math.min(pitchEffectFactor, pitchUpMaxFactor); 
+        } else { 
+            pitchEffectFactor = Math.max(0, pitchUpMaxFactor - (Math.abs(currentPitchRadForLift) - criticalPitchUpRad) * stallSensitivity); 
+        }
+    }
+    
+    let calculatedLift = 0; 
+    if (gameState.speed > STALL_SPEED_MPS) { 
+        calculatedLift = currentLiftFactor * gameState.speed * gameState.speed * pitchEffectFactor;
+    }
+    
     let lift = calculatedLift; 
     const highSpeedThreshold = NORMAL_TAKEOFF_SPEED_MPS * 1.5;
-    if (gameState.speed > highSpeedThreshold && gameState.altitude > 50) { const maxLiftAtHighSpeed = gravity * 1.01; if (lift > maxLiftAtHighSpeed) { lift = maxLiftAtHighSpeed; } }
-    else if (gameState.altitude > 50 && Math.abs(currentPitchRadForLift) < THREE.MathUtils.degToRad(15)) { const maxHorizontalFlightLift = gravity * 1.08; if (lift > maxHorizontalFlightLift) { lift = maxHorizontalFlightLift; } }
-    const prevVSpeed = gameState.vSpeed; const onGroundThreshold = 0.2; const veryLowSpeedThreshold = KNOTS_TO_MPS * 10; 
+    if (gameState.speed > highSpeedThreshold && gameState.altitude > 50) {
+        const maxLiftAtHighSpeed = gravity * 1.01; 
+        if (lift > maxLiftAtHighSpeed) { lift = maxLiftAtHighSpeed; }
+    } else if (gameState.altitude > 50 && Math.abs(currentPitchRadForLift) < THREE.MathUtils.degToRad(15)) { 
+        const maxHorizontalFlightLift = gravity * 1.08; 
+        if (lift > maxHorizontalFlightLift) { lift = maxHorizontalFlightLift; }
+    }
+    
+    const prevVSpeed = gameState.vSpeed; 
+    const onGroundThreshold = 0.2; 
+    const veryLowSpeedThreshold = KNOTS_TO_MPS * 10; 
+
     if (gameState.altitude <= onGroundThreshold && gameState.speed < veryLowSpeedThreshold && !gameState.engineOn && !(keysPressed['Digit6'] && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS) ) {
         gameState.vSpeed = 0; 
-        if (bayraktarModel) { bayraktarModel.updateMatrixWorld(true); modelBoundingBox.setFromObject(bayraktarModel);
-             if (modelBoundingBox.min.y < 0) { bayraktarModel.position.y -= modelBoundingBox.min.y; } 
-             else if (modelBoundingBox.min.y > 0 && modelBoundingBox.min.y < onGroundThreshold * 0.5) { bayraktarModel.position.y -= modelBoundingBox.min.y; }
-        } lift = 0; 
+        if (bayraktarModel) {
+             bayraktarModel.updateMatrixWorld(true); 
+             modelBoundingBox.setFromObject(bayraktarModel);
+             if (modelBoundingBox.min.y < 0) {
+                 bayraktarModel.position.y -= modelBoundingBox.min.y;
+             } else if (modelBoundingBox.min.y > 0 && modelBoundingBox.min.y < onGroundThreshold * 0.5) { 
+                 bayraktarModel.position.y -= modelBoundingBox.min.y;
+             }
+        }
+        lift = 0; 
     } else if (gameState.altitude <= 0.1) { 
         let allowTakeoff = false; let isAssistedAttempt = false;
-        if ((keysPressed['Digit6']) && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS && gameState.engineOn) { allowTakeoff = true; isAssistedAttempt = true; } 
+        if ((keysPressed['Digit6']) && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS && gameState.engineOn) { 
+            allowTakeoff = true; isAssistedAttempt = true; 
+        } 
         if (gameState.speed >= NORMAL_TAKEOFF_SPEED_MPS && lift > gravity && playerIsPitchingUp && gameState.engineOn) { allowTakeoff = true; } 
         if (allowTakeoff) {
             const verticalForceEffect = (lift - gravity);
@@ -459,23 +439,51 @@
             else if ( (verticalForceEffect > 0 && playerIsPitchingUp) || (isAssistedAttempt && playerIsPitchingUp) ) { gameState.vSpeed += verticalForceEffect * deltaTime; if (gameState.vSpeed < 0) gameState.vSpeed = 0; }
             else { gameState.vSpeed = 0;}
         } else { gameState.vSpeed = 0; }
-    } else { gameState.vSpeed += (lift - gravity) * deltaTime; }
-    bayraktarModel.position.y += gameState.vSpeed * deltaTime; 
-    if (bayraktarModel) { 
-        bayraktarModel.updateMatrixWorld(true); modelBoundingBox.setFromObject(bayraktarModel);
-        if (modelBoundingBox.min.y < 0) { 
-            const verticalSpeedAtTouchdown = prevVSpeed; bayraktarModel.position.y -= modelBoundingBox.min.y; 
-            if (verticalSpeedAtTouchdown < -2.0) { console.log("Hard landing! VSpeed:", verticalSpeedAtTouchdown.toFixed(2)); gameState.vSpeed = Math.abs(verticalSpeedAtTouchdown * 0.20); } 
-            else if (verticalSpeedAtTouchdown < -0.05) { console.log("Touchdown. VSpeed:", verticalSpeedAtTouchdown.toFixed(2)); gameState.vSpeed = 0; } 
-            else if (gameState.altitude <= onGroundThreshold) { gameState.vSpeed = 0; }
-        } gameState.altitude = bayraktarModel.position.y; 
+    } else { 
+        gameState.vSpeed += (lift - gravity) * deltaTime; 
     }
-    if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; gameState.fuel = Math.max(0, gameState.fuel); if (gameState.fuel === 0) { engineSound.pause(); engineSound.currentTime = 0; gameState.engineOn = false; gameState.throttle = 0; console.log("Пальне закінчилося. Двигун вимкнено."); } }
+    bayraktarModel.position.y += gameState.vSpeed * deltaTime; 
+    
+    if (bayraktarModel) { 
+        bayraktarModel.updateMatrixWorld(true); 
+        modelBoundingBox.setFromObject(bayraktarModel);
+        if (modelBoundingBox.min.y < 0) { 
+            const verticalSpeedAtTouchdown = prevVSpeed; 
+            bayraktarModel.position.y -= modelBoundingBox.min.y; 
+            if (verticalSpeedAtTouchdown < -2.0) { 
+                console.log("Hard landing! VSpeed:", verticalSpeedAtTouchdown.toFixed(2));
+                gameState.vSpeed = Math.abs(verticalSpeedAtTouchdown * 0.20); 
+            } else if (verticalSpeedAtTouchdown < -0.05) { 
+                 console.log("Touchdown. VSpeed:", verticalSpeedAtTouchdown.toFixed(2));
+                 gameState.vSpeed = 0; 
+            } else if (gameState.altitude <= onGroundThreshold) { 
+                 gameState.vSpeed = 0; 
+            }
+        }
+        gameState.altitude = bayraktarModel.position.y; 
+    }
+    
+    if (gameState.engineOn) { 
+        gameState.fuel -= gameState.throttle * 0.01 * deltaTime; 
+        gameState.fuel = Math.max(0, gameState.fuel); 
+        if (gameState.fuel === 0) { 
+            engineSound.pause(); engineSound.currentTime = 0;
+            gameState.engineOn = false; gameState.throttle = 0; 
+            console.log("Пальне закінчилося. Двигун вимкнено.");
+        }
+    }
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
-    if (engineSound && gameState.engineOn) { if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); engineSound.volume = Math.max(0.1, gameState.throttle * 0.5); } 
-    else if (engineSound && !engineSound.paused) { engineSound.pause(); }
+    if (engineSound && gameState.engineOn) { 
+         if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); 
+         engineSound.volume = Math.max(0.1, gameState.throttle * 0.5);
+    } else if (engineSound && !engineSound.paused) {
+        engineSound.pause(); 
+    }
+    
     const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
-    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); gameState.roll = THREE.MathUtils.radToDeg(euler.z); gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
+    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); 
+    gameState.roll = THREE.MathUtils.radToDeg(euler.z); 
+    gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
   }
   
   function updateCamera(deltaTime) {
@@ -485,7 +493,9 @@
         orbitControls.enabled = false; if (bayraktarModel.visible === false) bayraktarModel.visible = true;
         let desiredFollowPos = followCameraOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
         const minCameraHeightAboveGround = 2.5; 
-        if (desiredFollowPos.y < minCameraHeightAboveGround) { desiredFollowPos.y = minCameraHeightAboveGround; }
+        if (desiredFollowPos.y < minCameraHeightAboveGround) { 
+            desiredFollowPos.y = minCameraHeightAboveGround; 
+        }
         camera.position.lerp(desiredFollowPos, 0.1); 
         let lookAtTargetForFollowCorrected = bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0));
         if (lookAtTargetForFollowCorrected.y < 0.5 && desiredFollowPos.y > lookAtTargetForFollowCorrected.y + 0.5) { lookAtTargetForFollowCorrected.y = Math.max(0.2, desiredFollowPos.y - 1.0); }
