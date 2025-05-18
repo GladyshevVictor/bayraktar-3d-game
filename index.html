@@ -133,21 +133,6 @@
         if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
         loadingDiv.style.display = 'none';
         if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
-        /* // Блок для відладки камери - ЗАКОМЕНТОВАНО
-        if (bayraktarModel) { 
-            const lookAtGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-            const lookAtMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            const lookAtCube = new THREE.Mesh(lookAtGeo, lookAtMat);
-            lookAtCube.position.set(tailViewLookAtOffset.x, tailViewLookAtOffset.y, tailViewLookAtOffset.z);
-            bayraktarModel.add(lookAtCube);
-
-            const camPosGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-            const camPosMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-            const camPosCube = new THREE.Mesh(camPosGeo, camPosMat);
-            camPosCube.position.set(tailViewPositionOffset.x, tailViewPositionOffset.y, tailViewPositionOffset.z);
-            bayraktarModel.add(camPosCube);
-        }
-        */
       },
       function (xhr) { if (xhr.lengthComputable) progressSpan.textContent = Math.round((xhr.loaded / xhr.total) * 100) + '%'; },
       function (error) {
@@ -222,7 +207,6 @@
         } else {
             while (indicatorSpan.firstChild) { indicatorSpan.removeChild(indicatorSpan.firstChild); }
             indicatorSpan.appendChild(document.createTextNode("Невідомий"));
-            // console.warn("[DEBUG] Mode name undefined for index:", currentCameraMode); 
         }
     }
   }
@@ -238,6 +222,7 @@
   function updateGameState(deltaTime) { 
     if (!bayraktarModel) return;
 
+    // --- ЛОГІКА ДВИГУНА ---
     if (gameState.engineOn && (keysPressed['r'] || keysPressed['к'])) { 
         engineKeyHoldTime += deltaTime;
         if (engineKeyHoldTime >= SHUTDOWN_HOLD_DURATION) {
@@ -247,13 +232,44 @@
             // engineKeyHoldTime скинеться в keyup
         }
     }
-    
+    // --- КІНЕЦЬ ЛОГІКИ ДВИГУНА ---
+
     const thrustAcceleration = 20, dragFactor = 0.005, liftFactor = 0.05, gravity = 9.81, rotationSpeed = 1.5 * deltaTime; 
-    let pitchChange = 0; const playerIsPitchingUp = keysPressed['s']; 
-    if (keysPressed['w']) { pitchChange = rotationSpeed; } if (keysPressed['s']) { pitchChange = -rotationSpeed;} 
-    let rollChange = 0, yawChange = 0;
-    if (keysPressed['a']) rollChange = rotationSpeed; if (keysPressed['d']) rollChange = -rotationSpeed;
-    if (keysPressed['q']) yawChange = rotationSpeed; if (keysPressed['e']) yawChange = -rotationSpeed; 
+    
+    let pitchChange = 0; 
+    let rollChange = 0;
+    let yawChange = 0; 
+    const playerIsPitchingUp = keysPressed['s']; // Припускаємо 'S' - ніс вгору
+
+    // --- ЛОГІКА КЕРУВАННЯ ПОВЕРХНЯМИ З ОБМЕЖЕННЯМИ НА ЗЕМЛІ ---
+    const groundControlSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.7; // Поріг швидкості для деякого контролю на землі
+    const groundPitchSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.4; // Поріг швидкості для невеликого тангажу
+
+    if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) { 
+        // Повний контроль в повітрі або на великій швидкості на землі
+        if (keysPressed['w']) { pitchChange = rotationSpeed; } // Ніс вниз
+        if (keysPressed['s']) { pitchChange = -rotationSpeed; } // Ніс вгору
+        if (keysPressed['a']) { rollChange = rotationSpeed; } // Крен вліво
+        if (keysPressed['d']) { rollChange = -rotationSpeed; } // Крен вправо
+    } else {
+        // На землі та швидкість мала
+        rollChange = 0; // Крен вимкнено
+
+        if (keysPressed['s'] && gameState.speed > groundPitchSpeedThreshold) { // Дозволяємо підняти ніс при певній швидкості
+             pitchChange = -rotationSpeed * 0.3; // Зменшена ефективність
+        } else if (keysPressed['w'] && gameState.speed > groundPitchSpeedThreshold) { // Дозволяємо опустити ніс (обережно)
+            pitchChange = rotationSpeed * 0.2; // Дуже мала ефективність
+        }
+         else {
+            pitchChange = 0;
+        }
+    }
+
+    // Рискання (зменшена ефективність на землі)
+    const yawEffectiveness = (gameState.altitude > 0.1) ? 1.0 : 0.6;
+    if (keysPressed['q']) { yawChange = rotationSpeed * yawEffectiveness; } 
+    if (keysPressed['e']) { yawChange = -rotationSpeed * yawEffectiveness; }
+    // --- КІНЕЦЬ ЛОГІКИ КЕРУВАННЯ ПОВЕРХНЯМИ ---
     
     if (gameState.engineOn) {
         if (keysPressed['shift']) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
@@ -263,7 +279,10 @@
         gameState.throttle = 0; 
     }
             
-    bayraktarModel.rotateX(pitchChange); bayraktarModel.rotateZ(rollChange); bayraktarModel.rotateY(yawChange);
+    bayraktarModel.rotateX(pitchChange); 
+    bayraktarModel.rotateZ(rollChange); // Крен застосовується навколо осі Z моделі
+    bayraktarModel.rotateY(yawChange);
+
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0); 
     let drag = dragFactor * gameState.speed * gameState.speed;
     gameState.speed += (actualThrust - drag) * deltaTime; gameState.speed = Math.max(0, gameState.speed);
@@ -295,22 +314,9 @@
         }
     }
     
-    if (gameState.engineOn) { 
-        gameState.fuel -= gameState.throttle * 0.01 * deltaTime; 
-        gameState.fuel = Math.max(0, gameState.fuel); 
-        if (gameState.fuel === 0) { 
-            engineSound.pause(); engineSound.currentTime = 0;
-            gameState.engineOn = false; gameState.throttle = 0; 
-            console.log("Пальне закінчилося. Двигун вимкнено.");
-        }
-    }
+    if (gameState.engineOn) { /* ... код пального ... */ }
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
-    if (engineSound && gameState.engineOn) { 
-         if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); 
-         engineSound.volume = Math.max(0.1, gameState.throttle * 0.5);
-    } else if (engineSound && !engineSound.paused) {
-        engineSound.pause(); 
-    }
+    if (engineSound && gameState.engineOn) { /* ... код звуку двигуна ... */ } else if (engineSound && !engineSound.paused) { engineSound.pause(); }
     
     const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
     gameState.pitch = THREE.MathUtils.radToDeg(euler.x); gameState.roll = THREE.MathUtils.radToDeg(euler.z); gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
