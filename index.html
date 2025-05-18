@@ -117,6 +117,7 @@
 
   let scene, camera, renderer, clock, orbitControls;
   let bayraktarModel, mixer;
+  const modelBoundingBox = new THREE.Box3(); // Для розрахунку зіткнень із землею
   
   const engineSound = document.getElementById('engineSound');
   const startSound = document.getElementById('startSound');
@@ -139,8 +140,8 @@
   let currentCameraMode = CAMERA_MODES.FOLLOW;
 
   // Зміщення для камери "Вигляд з хвоста" (налаштуйте під вашу модель!)
-  // Камера розташована на хвості: Y-вгору, Z-назад відносно центру моделі
-  const tailViewPositionOffset = new THREE.Vector3(0, 1.2, 7.5); 
+  // Камера розташована на хвості: X-вбік, Y-вгору, Z-назад відносно центру моделі
+  const tailViewPositionOffset = new THREE.Vector3(0.7, 1.6, 8.8); 
   // Точка, на яку дивиться камера (центр гвинта): Y-вгору (на рівні гвинта), Z-назад (але перед камерою)
   const tailViewLookAtOffset = new THREE.Vector3(0, 0.8, 5.0); 
 
@@ -163,8 +164,8 @@
     orbitControls.enableDamping = true;
     orbitControls.dampingFactor = 0.1;
     orbitControls.enabled = false; 
-    orbitControls.minDistance = 2;  // Зменшено для кращого огляду в TAIL_VIEW, якщо потрібно наблизитись
-    orbitControls.maxDistance = 150; // Збільшено для загального випадку
+    orbitControls.minDistance = 2;
+    orbitControls.maxDistance = 150;
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -190,10 +191,10 @@
     const loadingDiv = document.getElementById('loading');
     const progressSpan = document.getElementById('progress');
 
-    gltfLoader.load( 'bayraktar.glb', // Переконайтеся, що файл моделі існує
+    gltfLoader.load( 'bayraktar.glb',
       function (gltf) {
         bayraktarModel = gltf.scene;
-        bayraktarModel.scale.set(2, 2, 2); // Налаштуйте масштаб
+        bayraktarModel.scale.set(2, 2, 2); 
         bayraktarModel.traverse(node => { if (node.isMesh) node.castShadow = true; });
         scene.add(bayraktarModel);
         if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
@@ -263,36 +264,78 @@
 
   function updateGameState(deltaTime) { 
     if (!bayraktarModel) return;
+
+    // --- Керування та обертання ---
     const thrustAcceleration = 20, dragFactor = 0.005, liftFactor = 0.05, gravity = 9.81, rotationSpeed = 1.5 * deltaTime; 
     if (keysPressed['shift'] && gameState.engineOn) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
     if ((keysPressed['control'] || keysPressed['ctrl']) && gameState.engineOn) gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
     if (!gameState.engineOn && gameState.throttle > 0) gameState.throttle = 0;
+    
     let pitchChange = 0, rollChange = 0, yawChange = 0;
-    if (keysPressed['w']) pitchChange = rotationSpeed; if (keysPressed['s']) pitchChange = -rotationSpeed;
-    if (keysPressed['a']) rollChange = rotationSpeed; if (keysPressed['d']) rollChange = -rotationSpeed;
-    if (keysPressed['q']) yawChange = rotationSpeed; if (keysPressed['e']) yawChange = -rotationSpeed;
-    bayraktarModel.rotateX(pitchChange); bayraktarModel.rotateZ(rollChange); bayraktarModel.rotateY(yawChange);
+    if (keysPressed['w']) pitchChange = rotationSpeed; 
+    if (keysPressed['s']) pitchChange = -rotationSpeed;
+    if (keysPressed['a']) rollChange = rotationSpeed; 
+    if (keysPressed['d']) rollChange = -rotationSpeed;
+    if (keysPressed['q']) yawChange = rotationSpeed; 
+    if (keysPressed['e']) yawChange = -rotationSpeed;
+    
+    bayraktarModel.rotateX(pitchChange); 
+    bayraktarModel.rotateZ(rollChange); 
+    bayraktarModel.rotateY(yawChange);
+
+    // --- Фізика руху ---
     let actualThrust = gameState.throttle * thrustAcceleration, drag = dragFactor * gameState.speed * gameState.speed;
-    gameState.speed += (actualThrust - drag) * deltaTime; gameState.speed = Math.max(0, gameState.speed);
+    gameState.speed += (actualThrust - drag) * deltaTime; 
+    gameState.speed = Math.max(0, gameState.speed);
+    
     const moveDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(bayraktarModel.quaternion);
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
+    
     let lift = liftFactor * gameState.speed * gameState.speed * Math.cos(bayraktarModel.rotation.x); 
-    if (gameState.altitude > 0 || (gameState.altitude <=0 && lift > gravity)) gameState.vSpeed += (lift - gravity) * deltaTime; else gameState.vSpeed = 0; 
-    if (gameState.altitude <= 0.1 && gameState.speed < gameState.minSpeedTakeoff && lift < gravity) { gameState.vSpeed = Math.max(0, gameState.vSpeed); bayraktarModel.position.y = Math.max(0, bayraktarModel.position.y); }
+    
+    // Вертикальна швидкість та висота
+    if (gameState.altitude > 0 || (gameState.altitude <=0 && lift > gravity && gameState.speed > gameState.minSpeedTakeoff) ) { // Додано умову minSpeedTakeoff для зльоту
+        gameState.vSpeed += (lift - gravity) * deltaTime;
+    } else if (gameState.altitude <= 0) { // Якщо на землі і недостатньо тяги/швидкості для зльоту
+        gameState.vSpeed = 0; 
+    }
     bayraktarModel.position.y += gameState.vSpeed * deltaTime;
-    if (bayraktarModel.position.y < 0) { bayraktarModel.position.y = 0; gameState.vSpeed = 0; }
-    gameState.altitude = bayraktarModel.position.y;
-    if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; gameState.fuel = Math.max(0, gameState.fuel); if (gameState.fuel === 0) { gameState.engineOn = false; gameState.throttle = 0; engineSound.pause(); }}
+    
+    // --- Корекція зіткнення з землею ---
+    // Цей блок має йти ПІСЛЯ оновлення позиції Y
+    if (bayraktarModel) { // Переконуємося, що модель існує
+        // Оновлюємо матрицю світу моделі, щоб bounding box був актуальним
+        bayraktarModel.updateMatrixWorld(true); 
+        modelBoundingBox.setFromObject(bayraktarModel);
+
+        if (modelBoundingBox.min.y < 0) {
+            bayraktarModel.position.y -= modelBoundingBox.min.y; // Зсуваємо модель вгору
+            gameState.vSpeed = 0; // Зупиняємо вертикальний рух в землю
+            // Також може бути доцільно обмежити кут тангажу, якщо ніс "клює" в землю
+            // Наприклад, якщо pitchChange < 0 і modelBoundingBox.min.y < 0, то скасувати pitchChange або обмежити
+        }
+    }
+    gameState.altitude = bayraktarModel ? bayraktarModel.position.y : 0; // Оновлюємо висоту після корекції
+
+    // --- Пальне, RPM та інше ---
+    if (gameState.engineOn) { 
+        gameState.fuel -= gameState.throttle * 0.01 * deltaTime; 
+        gameState.fuel = Math.max(0, gameState.fuel); 
+        if (gameState.fuel === 0) { gameState.engineOn = false; gameState.throttle = 0; engineSound.pause(); }
+    }
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
     if (engineSound) engineSound.volume = Math.max(0.1, gameState.throttle * 0.5);
+    
     const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
-    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); gameState.roll = THREE.MathUtils.radToDeg(euler.z); gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
+    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); 
+    gameState.roll = THREE.MathUtils.radToDeg(euler.z); 
+    gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
   }
   
   function updateCamera(deltaTime) {
     if (!bayraktarModel) return;
     const lookAtTargetForFollow = bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0));
-    // bayraktarModel.visible = true; // Модель завжди видима в усіх режимах камери тут
+    if (bayraktarModel) bayraktarModel.visible = true;
 
     switch (currentCameraMode) {
       case CAMERA_MODES.FOLLOW:
@@ -303,10 +346,8 @@
         break;
       case CAMERA_MODES.TAIL_VIEW:
         orbitControls.enabled = false;
-        // Позиція камери на хвості
         const worldCameraTailPosition = tailViewPositionOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
         camera.position.copy(worldCameraTailPosition);
-        // Точка, на яку дивиться камера (гвинт)
         const worldLookAtPropellerPosition = tailViewLookAtOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
         camera.lookAt(worldLookAtPropellerPosition);
         break;
