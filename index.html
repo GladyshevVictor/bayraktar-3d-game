@@ -110,7 +110,6 @@
   const followCameraOffset = new THREE.Vector3(0, 6, 18);  
 
   function init() {
-    console.log("init() called");
     clock = new THREE.Clock();
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB); 
@@ -127,24 +126,15 @@
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
     const textureLoader = new THREE.TextureLoader();
-    const runwayTexture = textureLoader.load('runway_texture.png', 
-        () => { console.log("Runway texture loaded successfully."); }, // onSuccess
-        undefined, // onProgress
-        () => { console.error("ERROR: Runway texture not found!"); } // onError
-    );
+    const runwayTexture = textureLoader.load('runway_texture.png', undefined, undefined, () => { console.warn("Runway texture not found."); });
     runwayTexture.wrapS = THREE.RepeatWrapping; runwayTexture.wrapT = THREE.RepeatWrapping; runwayTexture.repeat.set(5, 20); runwayTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const runwayMaterial = new THREE.MeshStandardMaterial({ map: runwayTexture, color: runwayTexture ? 0xffffff : 0x555555, roughness: 0.8, metalness: 0.2 });
     const runway = new THREE.Mesh( new THREE.PlaneGeometry(200, 3000), runwayMaterial ); runway.rotation.x = -Math.PI / 2; runway.receiveShadow = true; scene.add(runway);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000), new THREE.MeshStandardMaterial({ color: 0x3E8948, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; ground.receiveShadow = true; scene.add(ground);
-    
     const gltfLoader = new GLTFLoader();
-    const loadingDiv = document.getElementById('loading'); 
-    const progressSpan = document.getElementById('progress');
-    console.log("Attempting to load bayraktar.glb");
-    gltfLoader.load( 
-      'bayraktar.glb', // Переконайтеся, що файл тут і доступний
+    const loadingDiv = document.getElementById('loading'); const progressSpan = document.getElementById('progress');
+    gltfLoader.load( 'bayraktar.glb',
       function (gltf) {
-        console.log("GLTF model loaded successfully!");
         bayraktarModel = gltf.scene;
         bayraktarModel.scale.set(2, 2, 2); 
         bayraktarModel.position.set(0, 0.5, 0); 
@@ -154,24 +144,12 @@
         loadingDiv.style.display = 'none';
         if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
       },
-      function (xhr) { 
-        if (xhr.lengthComputable) {
-            const percentComplete = (xhr.loaded / xhr.total) * 100;
-            progressSpan.textContent = Math.round(percentComplete) + '%';
-            // console.log('Model ' + Math.round(percentComplete, 2) + '% loaded.');
-        }
-      },
+      function (xhr) { if (xhr.lengthComputable) progressSpan.textContent = Math.round((xhr.loaded / xhr.total) * 100) + '%'; },
       function (error) {
-        console.error('GLTF loading error:', error); 
-        loadingDiv.textContent = 'Помилка завантаження моделі! Перевірте консоль.'; 
-        progressSpan.textContent = '';
-        // Додамо плейсхолдер, якщо модель не завантажилась
-        const placeholderGeo = new THREE.BoxGeometry(5, 1, 3); 
-        const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-        bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); 
-        bayraktarModel.position.set(0, 0.5, 0); 
+        console.error('GLTF loading error:', error); loadingDiv.textContent = 'Помилка моделі. Плейсхолдер.'; progressSpan.textContent = '';
+        const placeholderGeo = new THREE.BoxGeometry(5, 1, 3); const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); bayraktarModel.position.set(0, 0.5, 0); 
         scene.add(bayraktarModel);
-        console.log("Placeholder model added due to loading error.");
         if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
       }
     );
@@ -283,7 +261,7 @@
     
     const thrustAcceleration = 15; 
     const dragFactor = 0.008;   
-    let liftFactor = 0.035; // Змінено для тестування підйому
+    let liftFactor = 0.025; // ЗМЕНШЕНО ЩЕ для тесту
     const gravity = 9.81;
     const rotationSpeed = 1.5 * deltaTime; 
     
@@ -332,20 +310,47 @@
     const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion); 
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
     
-    let calculatedLift = liftFactor * gameState.speed * gameState.speed * Math.cos(bayraktarModel.rotation.x);
+    // --- ОНОВЛЕНА ЛОГІКА ПІДЙОМНОЇ СИЛИ З PITCH EFFECT FACTOR ---
+    let pitchEffectFactor = 1.0; 
+    const currentPitchRad = bayraktarModel.rotation.x; 
+
+    const pitchDownSensitivity = 7.0; // ЗНАЧНО ЗБІЛЬШЕНО
+    const pitchUpSensitivity = 1.5;   
+    const pitchUpMaxFactor = 1.25;    
+    const criticalPitchUpRad = THREE.MathUtils.degToRad(15); 
+    const stallSensitivity = 5.0;     
+
+    if (currentPitchRad > 0) { // Ніс опущений
+        pitchEffectFactor = Math.max(0, 1.0 - currentPitchRad * pitchDownSensitivity); 
+        // console.log(`Ніс ВНИЗ: pitchRad=${currentPitchRad.toFixed(3)}, pitchEffectFactor=${pitchEffectFactor.toFixed(3)}, speed=${gameState.speed.toFixed(1)}`);
+    } else if (currentPitchRad < 0) { // Ніс піднятий
+        if (Math.abs(currentPitchRad) < criticalPitchUpRad) { 
+             pitchEffectFactor = 1.0 + Math.abs(currentPitchRad) * pitchUpSensitivity; 
+             pitchEffectFactor = Math.min(pitchEffectFactor, pitchUpMaxFactor); 
+        } else { 
+            pitchEffectFactor = Math.max(0, pitchUpMaxFactor - (Math.abs(currentPitchRad) - criticalPitchUpRad) * stallSensitivity); 
+        }
+        // console.log(`Ніс ВГОРУ: pitchRad=${currentPitchRad.toFixed(3)}, pitchEffectFactor=${pitchEffectFactor.toFixed(3)}, speed=${gameState.speed.toFixed(1)}`);
+    } 
+    // else { console.log(`ГОРИЗОНТАЛЬНО: pitchRad=${currentPitchRad.toFixed(3)}, pitchEffectFactor=${pitchEffectFactor.toFixed(3)}, speed=${gameState.speed.toFixed(1)}`); }
+
+
+    let calculatedLift = liftFactor * gameState.speed * gameState.speed * pitchEffectFactor;
     let lift = calculatedLift; 
+
     const highSpeedThreshold = NORMAL_TAKEOFF_SPEED_MPS * 1.5;
     if (gameState.speed > highSpeedThreshold && gameState.altitude > 50) {
         const maxLiftAtHighSpeed = gravity * 1.01; 
         if (lift > maxLiftAtHighSpeed) {
             lift = maxLiftAtHighSpeed;
         }
-    } else if (gameState.altitude > 50 && Math.abs(bayraktarModel.rotation.x) < THREE.MathUtils.degToRad(15)) { 
+    } else if (gameState.altitude > 50 && Math.abs(currentPitchRad) < THREE.MathUtils.degToRad(15)) { 
         const maxHorizontalFlightLift = gravity * 1.08; 
         if (lift > maxHorizontalFlightLift) {
             lift = maxHorizontalFlightLift;
         }
     }
+    // --- КІНЕЦЬ ОНОВЛЕНОЇ ЛОГІКИ ПІДЙОМНОЇ СИЛИ ---
     
     if (gameState.altitude <= 0.1) { 
         let allowTakeoff = false; let isAssistedAttempt = false;
@@ -366,7 +371,6 @@
         bayraktarModel.updateMatrixWorld(true); 
         modelBoundingBox.setFromObject(bayraktarModel);
         if (modelBoundingBox.min.y < 0) { 
-            // console.log(`Ground collision! Model Y: ${bayraktarModel.position.y.toFixed(2)}, Box_min.y: ${modelBoundingBox.min.y.toFixed(2)}, Shifting up by: ${(-modelBoundingBox.min.y).toFixed(2)}`);
             bayraktarModel.position.y -= modelBoundingBox.min.y; 
             if (gameState.vSpeed < 0) { gameState.vSpeed = 0; } 
             gameState.altitude = bayraktarModel.position.y; 
