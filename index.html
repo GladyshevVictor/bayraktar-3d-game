@@ -237,7 +237,7 @@
     orbitControls.dampingFactor = 0.1;
     orbitControls.enabled = false; 
     orbitControls.minDistance = 2;
-    orbitControls.maxDistance = 400; // Збільшено, враховуючи ваші значення для tailViewLookAtOffset
+    orbitControls.maxDistance = 400; 
 
     fuelNeedle = document.getElementById('fuelNeedle');
     fuelValueDigital = document.getElementById('fuelValueDigital');
@@ -268,6 +268,7 @@
       function (gltf) {
         bayraktarModel = gltf.scene;
         bayraktarModel.scale.set(2, 2, 2); 
+        bayraktarModel.position.set(0, 0.5, 0); // Встановлюємо початкову позицію
         bayraktarModel.traverse(node => { if (node.isMesh) node.castShadow = true; });
         scene.add(bayraktarModel);
         if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
@@ -304,7 +305,8 @@
         const placeholderGeo = new THREE.BoxGeometry(5, 1, 3);
         const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
         bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat);
-        bayraktarModel.position.y = 2.5; scene.add(bayraktarModel);
+        bayraktarModel.position.set(0, 0.5, 0); // Встановлюємо початкову позицію і для плейсхолдера
+        scene.add(bayraktarModel);
         if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
       }
     );
@@ -314,8 +316,38 @@
     animate();
   }
 
-  function setupEventListeners() { /* ... код без змін ... */ }
-  function switchCameraMode() { /* ... код без змін ... */ }
+  function setupEventListeners() {
+    window.addEventListener('resize', onWindowResize, false);
+    document.addEventListener('keydown', (event) => { 
+        const key = event.key.toLowerCase();
+        keysPressed[key] = true; 
+        if (key === 'c' || key === 'с') { // Додано українську 'с'
+            switchCameraMode();
+        }
+    });
+    document.addEventListener('keyup', (event) => { 
+        keysPressed[event.key.toLowerCase()] = false; 
+        if (event.code === 'Space' && bayraktarModel && gameState.altitude > 10) fireMissile();
+    });
+  }
+
+  function switchCameraMode() {
+    currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
+    console.log("Switching camera mode to:", CAMERA_MODE_NAMES[currentCameraMode]); // Для відладки
+    orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
+    
+    if (bayraktarModel) bayraktarModel.visible = true;
+
+    if (bayraktarModel && currentCameraMode === CAMERA_MODES.ORBIT) {
+      const desiredOrbitStartPos = bayraktarModel.position.clone().add(new THREE.Vector3(0,10,20).applyQuaternion(bayraktarModel.quaternion));
+      if (camera.position.distanceTo(desiredOrbitStartPos) > 1.0) { 
+          camera.position.copy(desiredOrbitStartPos);
+      }
+      orbitControls.target.copy(bayraktarModel.position);
+    }
+    updateCameraModeIndicator();
+  }
+  
   function updateCameraModeIndicator() { /* ... код без змін ... */ }
   function fireMissile() { /* ... код без змін ... */ }
 
@@ -324,21 +356,13 @@
 
     const thrustAcceleration = 20, dragFactor = 0.005, liftFactor = 0.05, gravity = 9.81, rotationSpeed = 1.5 * deltaTime; 
     
-    // --- Керування тангажем (W/S) ---
-    // ПРИПУЩЕННЯ: 'S' - ніс вгору, 'W' - ніс вниз. 
-    // Якщо у вас навпаки, змініть логіку для pitchChange та визначення playerIsPitchingUp.
-    // Також, model.rotateX(негативне значення) зазвичай піднімає ніс.
     let pitchChange = 0;
+    // ПРИПУЩЕННЯ: 'S' - ніс вгору, 'W' - ніс вниз. 
+    // rotateX(негативне значення) піднімає ніс.
     const playerIsPitchingUp = keysPressed['s']; 
-
-    if (keysPressed['w']) { // Ніс вниз
-        pitchChange = rotationSpeed; 
-    }
-    if (keysPressed['s']) { // Ніс вгору
-        pitchChange = -rotationSpeed; 
-    }
-    // --- ---
-
+    if (keysPressed['w']) { pitchChange = rotationSpeed; } // Ніс вниз
+    if (keysPressed['s']) { pitchChange = -rotationSpeed;} // Ніс вгору
+    
     let rollChange = 0, yawChange = 0;
     if (keysPressed['a']) rollChange = rotationSpeed; 
     if (keysPressed['d']) rollChange = -rotationSpeed;
@@ -399,30 +423,30 @@
   function updateCamera(deltaTime) {
     if (!bayraktarModel) return;
     
-    // bayraktarModel.visible = true; // Забезпечити видимість, якщо десь приховується
+    // bayraktarModel.visible = true; // Модель має бути видима
 
     switch (currentCameraMode) {
       case CAMERA_MODES.FOLLOW:
         orbitControls.enabled = false;
-        if (bayraktarModel.visible === false) bayraktarModel.visible = true; // На випадок, якщо десь було приховано
+        if (bayraktarModel.visible === false) bayraktarModel.visible = true;
         
         let desiredFollowPos = followCameraOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
         
-        // --- КОРЕКЦІЯ ВИСОТИ КАМЕРИ СЛІДУВАННЯ ---
         const minCameraHeightAboveGround = 1.5; 
         if (desiredFollowPos.y < minCameraHeightAboveGround) {
             desiredFollowPos.y = minCameraHeightAboveGround;
         }
-        // --- КІНЕЦЬ КОРЕКЦІЇ ---
 
         camera.position.lerp(desiredFollowPos, 0.1); 
         
-        let lookAtTargetForFollow = bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0));
-        // Корекція точки погляду, якщо камера примусово піднята
-        if (actualLookAtTarget.y < 0.5 && desiredFollowPos.y > actualLookAtTarget.y) { 
-             actualLookAtTarget.y = Math.min(desiredFollowPos.y - 0.5, 0.5); 
+        let lookAtTargetForFollowCorrected = bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0));
+        
+        if (lookAtTargetForFollowCorrected.y < 0.5 && desiredFollowPos.y > lookAtTargetForFollowCorrected.y + 0.5) { 
+             lookAtTargetForFollowCorrected.y = Math.max(0.2, desiredFollowPos.y - 1.0); 
+        } else if (lookAtTargetForFollowCorrected.y > desiredFollowPos.y + 2.0 && desiredFollowPos.y < minCameraHeightAboveGround + 1.0) {
+            lookAtTargetForFollowCorrected.y = desiredFollowPos.y + 1.0;
         }
-        camera.lookAt(lookAtTargetForFollow); // Використовуємо оригінальну змінну
+        camera.lookAt(lookAtTargetForFollowCorrected);
         break;
 
       case CAMERA_MODES.TAIL_VIEW:
@@ -447,7 +471,7 @@
     }
   }
 
-  function updateHUD() { /* ... код без змін ... */ }
+  function updateHUD() { /* ... код без змін, окрім видалення текстового індикатора палива, якщо ви його прибрали з HTML ... */ }
   function onWindowResize() { /* ... код без змін ... */ }
   function updateFuelGauge() { /* ... код без змін ... */ }
 
@@ -455,8 +479,12 @@
     requestAnimationFrame(animate);
     const deltaTime = clock.getDelta();
     if (mixer) mixer.update(deltaTime);
-    updateGameState(deltaTime);
-    if (bayraktarModel) updateCamera(deltaTime);
+    
+    if(bayraktarModel) { // Оновлювати гру та камеру, тільки якщо модель існує
+        updateGameState(deltaTime);
+        updateCamera(deltaTime);
+    }
+    
     updateHUD();
     updateFuelGauge(); 
     renderer.render(scene, camera);
