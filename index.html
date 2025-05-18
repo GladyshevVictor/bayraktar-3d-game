@@ -110,33 +110,167 @@
   const followCameraOffset = new THREE.Vector3(0, 6, 18);  
 
   function init() {
-    // ... (код функції init без змін з попередньої версії) ...
+    console.log("init() called");
+    clock = new THREE.Clock();
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB); 
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+    orbitControls = new OrbitControls(camera, renderer.domElement);
+    orbitControls.enableDamping = true; orbitControls.dampingFactor = 0.1; orbitControls.enabled = false; 
+    orbitControls.minDistance = 2; orbitControls.maxDistance = 400; 
+    fuelNeedle = document.getElementById('fuelNeedle');
+    fuelValueDigital = document.getElementById('fuelValueDigital');
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
+    const textureLoader = new THREE.TextureLoader();
+    const runwayTexture = textureLoader.load('runway_texture.png', 
+        () => { console.log("Runway texture loaded successfully."); }, // onSuccess
+        undefined, // onProgress
+        () => { console.error("ERROR: Runway texture not found!"); } // onError
+    );
+    runwayTexture.wrapS = THREE.RepeatWrapping; runwayTexture.wrapT = THREE.RepeatWrapping; runwayTexture.repeat.set(5, 20); runwayTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    const runwayMaterial = new THREE.MeshStandardMaterial({ map: runwayTexture, color: runwayTexture ? 0xffffff : 0x555555, roughness: 0.8, metalness: 0.2 });
+    const runway = new THREE.Mesh( new THREE.PlaneGeometry(200, 3000), runwayMaterial ); runway.rotation.x = -Math.PI / 2; runway.receiveShadow = true; scene.add(runway);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000), new THREE.MeshStandardMaterial({ color: 0x3E8948, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; ground.receiveShadow = true; scene.add(ground);
+    
+    const gltfLoader = new GLTFLoader();
+    const loadingDiv = document.getElementById('loading'); 
+    const progressSpan = document.getElementById('progress');
+    console.log("Attempting to load bayraktar.glb");
+    gltfLoader.load( 
+      'bayraktar.glb', // Переконайтеся, що файл тут і доступний
+      function (gltf) {
+        console.log("GLTF model loaded successfully!");
+        bayraktarModel = gltf.scene;
+        bayraktarModel.scale.set(2, 2, 2); 
+        bayraktarModel.position.set(0, 0.5, 0); 
+        bayraktarModel.traverse(node => { if (node.isMesh) node.castShadow = true; });
+        scene.add(bayraktarModel);
+        if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
+        loadingDiv.style.display = 'none';
+        if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
+      },
+      function (xhr) { 
+        if (xhr.lengthComputable) {
+            const percentComplete = (xhr.loaded / xhr.total) * 100;
+            progressSpan.textContent = Math.round(percentComplete) + '%';
+            // console.log('Model ' + Math.round(percentComplete, 2) + '% loaded.');
+        }
+      },
+      function (error) {
+        console.error('GLTF loading error:', error); 
+        loadingDiv.textContent = 'Помилка завантаження моделі! Перевірте консоль.'; 
+        progressSpan.textContent = '';
+        // Додамо плейсхолдер, якщо модель не завантажилась
+        const placeholderGeo = new THREE.BoxGeometry(5, 1, 3); 
+        const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); 
+        bayraktarModel.position.set(0, 0.5, 0); 
+        scene.add(bayraktarModel);
+        console.log("Placeholder model added due to loading error.");
+        if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
+      }
+    );
+    setupEventListeners();
+    updateCameraModeIndicator(); 
+    updateFuelGauge(); 
+    animate();
   }
   
   function startEngineAttempt() {
-    // ... (код функції startEngineAttempt без змін з попередньої версії) ...
+    if (!bayraktarModel) return;
+    if (!gameState.engineOn) { 
+        if (gameState.fuel > 0) {
+            try {
+                startSound.currentTime = 0;
+                startSound.play().then(() => {
+                    engineSound.loop = true; engineSound.volume = 0.1; engineSound.play();
+                    gameState.engineOn = true; console.log("Двигун запущено");
+                }).catch(e => console.warn("Не вдалося відтворити звук старту:", e));
+            } catch (e) { console.error("Помилка відтворення звуків двигуна:", e); }
+        } else { console.log("Неможливо запустити двигун: немає пального!"); }
+    }
   }
 
   function setupEventListeners() {
-    // ... (код функції setupEventListeners без змін з попередньої версії) ...
+    window.addEventListener('resize', onWindowResize, false);
+    document.addEventListener('keydown', (event) => { 
+        const key = event.key.toLowerCase();
+        const code = event.code; 
+        if (["KeyW", "KeyS", "KeyA", "KeyD", "KeyQ", "KeyE", "Space", "ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "Digit6"].includes(code)) {
+            keysPressed[code] = true;
+        } else { 
+            keysPressed[key] = true;
+        }
+        if (key === 'c' || key === 'с') { switchCameraMode(); }
+        if ((key === 'r' || key === 'к') && !gameState.engineOn && !rKeyJustPressedForStart) {
+            rKeyJustPressedForStart = true; 
+        }
+    });
+    document.addEventListener('keyup', (event) => { 
+        const key = event.key.toLowerCase();
+        const code = event.code;
+        if (["KeyW", "KeyS", "KeyA", "KeyD", "KeyQ", "KeyE", "Space", "ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "Digit6"].includes(code)) {
+            keysPressed[code] = false;
+        } else {
+            keysPressed[key] = false; 
+        }
+        if (code === 'Space' && bayraktarModel && gameState.altitude > 0.1) { 
+            fireMissile();
+        }
+        if ((key === 'r' || key === 'к')) {
+            if (rKeyJustPressedForStart) { 
+                if (engineKeyHoldTime < SHUTDOWN_HOLD_DURATION && !gameState.engineOn) { 
+                    startEngineAttempt();
+                }
+                rKeyJustPressedForStart = false; 
+            }
+            engineKeyHoldTime = 0; 
+        }
+    });
   }
 
   function switchCameraMode() {
-    // ... (код функції switchCameraMode без змін з попередньої версії) ...
+    currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
+    orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
+    if (bayraktarModel) bayraktarModel.visible = true;
+    if (bayraktarModel && currentCameraMode === CAMERA_MODES.ORBIT) {
+      const desiredOrbitStartPos = bayraktarModel.position.clone().add(new THREE.Vector3(0,10,20).applyQuaternion(bayraktarModel.quaternion));
+      if (camera.position.distanceTo(desiredOrbitStartPos) > 1.0) { camera.position.copy(desiredOrbitStartPos); }
+      orbitControls.target.copy(bayraktarModel.position);
+    }
+    updateCameraModeIndicator(); 
   }
   
   function updateCameraModeIndicator() {
-    // ... (код функції updateCameraModeIndicator без змін з попередньої версії) ...
+    const indicatorSpan = document.getElementById('currentCameraModeName');
+    if (indicatorSpan) {
+        const modeName = CAMERA_MODE_NAMES[currentCameraMode];
+        if (modeName !== undefined) {
+            while (indicatorSpan.firstChild) { indicatorSpan.removeChild(indicatorSpan.firstChild); }
+            indicatorSpan.appendChild(document.createTextNode(modeName)); 
+        } else {
+            while (indicatorSpan.firstChild) { indicatorSpan.removeChild(indicatorSpan.firstChild); }
+            indicatorSpan.appendChild(document.createTextNode("Невідомий"));
+        }
+    }
   }
 
   function fireMissile() {
-    // ... (код функції fireMissile без змін з попередньої версії) ...
+    if (gameState.fuel > 1) {
+        gameState.score++; gameState.fuel -= 0.5; 
+        try { missileSound.currentTime = 0; missileSound.play().catch(e => console.warn("Missile sound failed", e)); }
+        catch (e) { console.error("Error playing missile sound:", e); }
+    }
   }
 
   function updateGameState(deltaTime) { 
     if (!bayraktarModel) return;
 
-    // --- ЛОГІКА ДВИГУНА ---
     if (gameState.engineOn && (keysPressed['r'] || keysPressed['к'])) { 
         engineKeyHoldTime += deltaTime;
         if (engineKeyHoldTime >= SHUTDOWN_HOLD_DURATION) {
@@ -146,12 +280,10 @@
             rKeyJustPressedForStart = false; 
         }
     }
-    // --- КІНЕЦЬ ЛОГІКИ ДВИГУНА ---
     
-    // ВИЗНАЧЕННЯ КОНСТАНТ ФІЗИКИ (liftFactor може потребувати налаштування)
     const thrustAcceleration = 15; 
     const dragFactor = 0.008;   
-    let liftFactor = 0.03; // Спробуйте значення від 0.02 до 0.04
+    let liftFactor = 0.035; // Змінено для тестування підйому
     const gravity = 9.81;
     const rotationSpeed = 1.5 * deltaTime; 
     
@@ -200,44 +332,20 @@
     const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion); 
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
     
-    // --- ОНОВЛЕНА ЛОГІКА ПІДЙОМНОЇ СИЛИ З PITCH EFFECT FACTOR ---
-    let pitchEffectFactor = 1.0; 
-    const currentPitchRad = bayraktarModel.rotation.x; 
-
-    // Коефіцієнти для налаштування чутливості pitchEffectFactor
-    const pitchDownSensitivity = 1.8; // Чим більше, тим сильніше падає lift при опусканні носа
-    const pitchUpSensitivity = 1.5;   // Чим більше, тим сильніше росте lift при піднятті носа (до межі)
-    const pitchUpMaxFactor = 1.25;    // Максимальний множник lift від підняття носа
-    const criticalPitchUpRad = THREE.MathUtils.degToRad(15); // Кут, після якого lift починає падати (звалювання)
-    const stallSensitivity = 5.0;     // Чутливість падіння lift після критичного кута
-
-    if (currentPitchRad > 0) { // Ніс опущений
-        pitchEffectFactor = Math.max(0, 1.0 - currentPitchRad * pitchDownSensitivity); 
-    } else if (currentPitchRad < 0) { // Ніс піднятий
-        if (Math.abs(currentPitchRad) < criticalPitchUpRad) { 
-             pitchEffectFactor = 1.0 + Math.abs(currentPitchRad) * pitchUpSensitivity; 
-             pitchEffectFactor = Math.min(pitchEffectFactor, pitchUpMaxFactor); 
-        } else { 
-            pitchEffectFactor = Math.max(0, pitchUpMaxFactor - (Math.abs(currentPitchRad) - criticalPitchUpRad) * stallSensitivity); 
-        }
-    }
-
-    let calculatedLift = liftFactor * gameState.speed * gameState.speed * pitchEffectFactor;
+    let calculatedLift = liftFactor * gameState.speed * gameState.speed * Math.cos(bayraktarModel.rotation.x);
     let lift = calculatedLift; 
-
     const highSpeedThreshold = NORMAL_TAKEOFF_SPEED_MPS * 1.5;
     if (gameState.speed > highSpeedThreshold && gameState.altitude > 50) {
         const maxLiftAtHighSpeed = gravity * 1.01; 
         if (lift > maxLiftAtHighSpeed) {
             lift = maxLiftAtHighSpeed;
         }
-    } else if (gameState.altitude > 50 && Math.abs(currentPitchRad) < THREE.MathUtils.degToRad(15)) { 
+    } else if (gameState.altitude > 50 && Math.abs(bayraktarModel.rotation.x) < THREE.MathUtils.degToRad(15)) { 
         const maxHorizontalFlightLift = gravity * 1.08; 
         if (lift > maxHorizontalFlightLift) {
             lift = maxHorizontalFlightLift;
         }
     }
-    // --- КІНЕЦЬ ОНОВЛЕНОЇ ЛОГІКИ ПІДЙОМНОЇ СИЛИ ---
     
     if (gameState.altitude <= 0.1) { 
         let allowTakeoff = false; let isAssistedAttempt = false;
@@ -258,64 +366,35 @@
         bayraktarModel.updateMatrixWorld(true); 
         modelBoundingBox.setFromObject(bayraktarModel);
         if (modelBoundingBox.min.y < 0) { 
+            // console.log(`Ground collision! Model Y: ${bayraktarModel.position.y.toFixed(2)}, Box_min.y: ${modelBoundingBox.min.y.toFixed(2)}, Shifting up by: ${(-modelBoundingBox.min.y).toFixed(2)}`);
             bayraktarModel.position.y -= modelBoundingBox.min.y; 
             if (gameState.vSpeed < 0) { gameState.vSpeed = 0; } 
             gameState.altitude = bayraktarModel.position.y; 
         }
     }
     
-    if (gameState.engineOn) { /* ... код пального ... */ }
+    if (gameState.engineOn) { 
+        gameState.fuel -= gameState.throttle * 0.01 * deltaTime; 
+        gameState.fuel = Math.max(0, gameState.fuel); 
+        if (gameState.fuel === 0) { 
+            engineSound.pause(); engineSound.currentTime = 0;
+            gameState.engineOn = false; gameState.throttle = 0; 
+            console.log("Пальне закінчилося. Двигун вимкнено.");
+        }
+    }
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
-    if (engineSound && gameState.engineOn) { /* ... код звуку двигуна ... */ } else if (engineSound && !engineSound.paused) { engineSound.pause(); }
+    if (engineSound && gameState.engineOn) { 
+         if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); 
+         engineSound.volume = Math.max(0.1, gameState.throttle * 0.5);
+    } else if (engineSound && !engineSound.paused) {
+        engineSound.pause(); 
+    }
     
     const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
     gameState.pitch = THREE.MathUtils.radToDeg(euler.x); gameState.roll = THREE.MathUtils.radToDeg(euler.z); gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
   }
   
   function updateCamera(deltaTime) {
-    // ... (код функції updateCamera без змін з попередньої версії, що виправляла помилку камери) ...
-  }
-  function updateHUD() {
-    // ... (код функції updateHUD без змін з попередньої версії, що виправляла помилку TextContent) ...
-  }
-  function onWindowResize() { 
-    // ... (код функції onWindowResize без змін з попередньої версії) ...
-   }
-  function updateFuelGauge() { 
-    // ... (код функції updateFuelGauge без змін з попередньої версії) ...
-  }
-
-  function animate() {
-    requestAnimationFrame(animate);
-    const deltaTime = clock.getDelta();
-    if (mixer) mixer.update(deltaTime);
-    if(bayraktarModel) { 
-        updateGameState(deltaTime);
-        updateCamera(deltaTime);
-    }
-    updateHUD();
-    updateFuelGauge(); 
-    renderer.render(scene, camera);
-  }
-  
-  // Я вставлю повні тіла функцій, щоб уникнути плутанини.
-  // Переконайтеся, що у вас ТІЛЬКИ ОДНЕ визначення кожної функції.
-  // init() - вже є повний вище
-  // startEngineAttempt() - вже є повний вище
-  // setupEventListeners() - вже є повний вище
-  // switchCameraMode() - вже є повний вище
-  // updateCameraModeIndicator() - вже є повний вище
-  // fireMissile() - вже є повний вище
-  // updateGameState(deltaTime) - вже є повний вище (з новими змінами lift)
-  // updateCamera(deltaTime) - зараз буде повна версія
-  // updateHUD() - зараз буде повна версія
-  // onWindowResize() - зараз буде повна версія
-  // updateFuelGauge() - зараз буде повна версія
-  // animate() - вже є повний вище
-
-  // --- Повні тіла функцій, які не змінювались суттєво в ОСТАННЬОМУ запиті ---
-  // (Але містять всі попередні виправлення)
-  function updateCamera(deltaTime) 
     if (!bayraktarModel) { return; }
     switch (currentCameraMode) {
       case CAMERA_MODES.FOLLOW:
@@ -374,7 +453,19 @@
     else if (normalizedFuel < 0.25) { fuelValueDigital.style.color = '#ffd700';} 
     else { fuelValueDigital.style.color = 'white'; }
   }
-  // --- Кінець повних тіл функцій ---
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const deltaTime = clock.getDelta();
+    if (mixer) mixer.update(deltaTime);
+    if(bayraktarModel) { 
+        updateGameState(deltaTime);
+        updateCamera(deltaTime);
+    }
+    updateHUD();
+    updateFuelGauge(); 
+    renderer.render(scene, camera);
+  }
 
   init(); 
 </script>
