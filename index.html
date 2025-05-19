@@ -109,7 +109,7 @@
   const BRAKING_FORCE = 10; 
   const MAX_FUEL_LITERS = 300; 
   const MIN_ASSISTED_LIFTOFF_VSPEED = 1.5; 
-  const R_KEY_HOLD_TO_STOP_DURATION = 1.0; // Секунди для утримання R для зупинки двигуна
+  const R_KEY_HOLD_TO_STOP_DURATION = 1.0; 
   
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
@@ -117,7 +117,7 @@
   const gameState = { 
       fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, 
       vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false,
-      rKeyHoldTime: 0 // Додано для відстеження часу утримання R
+      rKeyHoldTime: 0 
     };
   const keysPressed = {};
   const CAMERA_MODES = { FOLLOW: 0, TAIL_VIEW: 1, ORBIT: 2, };
@@ -183,7 +183,7 @@
     const indicator = document.getElementById('currentCameraModeName');
     if (indicator) { indicator.textContent = CAMERA_MODE_NAMES[currentCameraMode] || "Невідомий режим"; }
   }
-  function setupEventListeners() { 
+  function setupEventListeners() { /* ... same as before ... */ 
     document.addEventListener('keydown', (event) => {
         keysPressed[event.code] = true; keysPressed[event.key.toLowerCase()] = true; 
         if (event.code === 'KeyC') {
@@ -191,7 +191,6 @@
             updateCameraModeIndicator();
             if (orbitControls) { orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT); }
         }
-        // Логіка запуску двигуна
         if ((event.code === 'KeyR' || event.key.toLowerCase() === 'к') && !gameState.engineOn && !keysPressed.engineStartInitiated) { 
             keysPressed.engineStartInitiated = true; 
             console.log("Спроба запуску двигуна...");
@@ -203,16 +202,14 @@
                 } else { 
                     console.log("Немає пального для запуску двигуна."); 
                 }
-                // Не скидаємо engineStartInitiated тут, щоб уникнути швидкого повторного старту при утриманні
             }, 500); 
         }
     });
     document.addEventListener('keyup', (event) => {
         keysPressed[event.code] = false; keysPressed[event.key.toLowerCase()] = false;
-        // Скидаємо флаг ініціації старту та час утримання R при відпусканні клавіші
         if (event.code === 'KeyR' || event.key.toLowerCase() === 'к') { 
             keysPressed.engineStartInitiated = false; 
-            gameState.rKeyHoldTime = 0; // Скидаємо час утримання для логіки зупинки
+            gameState.rKeyHoldTime = 0; 
         }
         if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
             console.log("Запуск ракети!");
@@ -229,7 +226,7 @@
     });
     keysPressed.engineStartInitiated = false; 
    }
-  function init() { /* ... same as before ... */
+  function init() { 
     clock = new THREE.Clock();
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);  
@@ -273,9 +270,16 @@
       },
       function (xhr) { if (xhr.lengthComputable) progressSpan.textContent = Math.round((xhr.loaded / xhr.total) * 100) + '%'; },
       function (error) {
-        console.error('GLTF loading error:', error); loadingDiv.textContent = 'Помилка моделі. Плейсхолдер.'; progressSpan.textContent = '';
-        const placeholderGeo = new THREE.BoxGeometry(5, 1, 3); const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-        bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); bayraktarModel.position.set(0, 0.5, 0); scene.add(bayraktarModel);
+        console.error('GLTF loading error:', error); 
+        // ЗМІНЕНО ПОВІДОМЛЕННЯ ПРО ПОМИЛКУ ЗАВАНТАЖЕННЯ МОДЕЛІ
+        loadingDiv.textContent = 'БПЛА на Регламенті технічного обслуговування'; 
+        progressSpan.textContent = ''; // Очищаємо відсотки
+        // Залишаємо завантаження плейсхолдера, якщо потрібно
+        const placeholderGeo = new THREE.BoxGeometry(5, 1, 3); 
+        const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); 
+        bayraktarModel.position.set(0, 0.5, 0);  
+        scene.add(bayraktarModel);
         if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
       }
     );
@@ -295,20 +299,20 @@
     
     // --- Логіка Запуску/Зупинки Двигуна ---
     if (keysPressed['KeyR'] || keysPressed['к']) {
-        if (gameState.engineOn && !keysPressed.engineStartInitiated) { // Якщо двигун працює і R не для старту
+        if (gameState.engineOn && !keysPressed.engineStartInitiated) { 
             gameState.rKeyHoldTime += deltaTime;
             if (gameState.rKeyHoldTime >= R_KEY_HOLD_TO_STOP_DURATION) {
                 gameState.engineOn = false;
                 gameState.throttle = 0; 
-                // gameState.rpm = 0; // RPM оновиться автоматично нижче
                 if (engineSound) engineSound.pause();
                 console.log("Двигун зупинено утриманням R/К");
+                gameState.rKeyHoldTime = 0; // Скидаємо після зупинки, щоб не спрацьовувало повторно
             }
         }
-        // Логіка запуску тепер повністю в setupEventListeners, щоб уникнути конфлікту
     } else {
-        if (gameState.rKeyHoldTime > 0) { 
-            gameState.rKeyHoldTime = 0; // Скидаємо час утримання, якщо R відпущено
+        // Якщо клавіша R не утримується, але час утримання був накопичений (наприклад, не вистачило для зупинки)
+        if (gameState.rKeyHoldTime > 0 && gameState.rKeyHoldTime < R_KEY_HOLD_TO_STOP_DURATION) { 
+            gameState.rKeyHoldTime = 0; 
         }
     }
 
@@ -354,17 +358,13 @@
     if (keysPressed['KeyQ'] || keysPressed['й']) { yawChange = rotationSpeedInput * yawEffectiveness; } 
     if (keysPressed['KeyE'] || keysPressed['у']) { yawChange = -rotationSpeedInput * yawEffectiveness; }
     
-    // --- Зміна газу (Throttle) --- Збільшена чутливість
+    // --- Зміна газу (Throttle) ---
     if (gameState.engineOn) {
-        if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 1.0 * deltaTime); // Було 0.5
-        if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 1.0 * deltaTime); // Було 0.5
+        if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 1.0 * deltaTime); 
+        if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 1.0 * deltaTime);
     }
-    // Скидання газу, якщо двигун вимкнений (і не в процесі старту, який тепер обробляється в keydown)
     if (!gameState.engineOn && gameState.throttle > 0) { 
-        // Якщо R не натиснута для старту (engineStartInitiated false), то можна скидати газ
-        // Або якщо R натиснута, але це для зупинки (тоді engineOn ще true, і цей блок не спрацює)
-        // Цей блок спрацює, якщо двигун вимкнувся (наприклад, через пальне або зупинку)
-         if (!keysPressed.engineStartInitiated) { // Додаткова перевірка, щоб не скидати газ під час спроби старту
+         if (!keysPressed.engineStartInitiated) { 
             gameState.throttle = 0;
          }
     }
@@ -376,7 +376,7 @@
     
     const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
 
-    if (propellerMesh) { /* ... same ... */ }
+    if (propellerMesh) { /* ... */ }
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0);  
     let drag = dragFactor * gameState.speed * gameState.speed;
     let currentBrakingForceApplied = 0;
@@ -430,7 +430,7 @@
     }
     if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) { /* ... */ }
     if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; gameState.fuel = Math.max(0, gameState.fuel); if (gameState.fuel === 0) { engineSound.pause(); engineSound.currentTime = 0; gameState.engineOn = false; gameState.throttle = 0; console.log("Пальне закінчилося. Двигун вимкнено."); } }
-    gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 2500 + 800 + gameState.throttle * 3000) : 0; // Змінив формулу RPM для більшої реалістичності
+    gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 2500 + 800 + gameState.throttle * 3000) : 0;
     if (engineSound && gameState.engineOn) { if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); engineSound.volume = Math.max(0.1, gameState.throttle * 0.5 + 0.1); }  
     else if (engineSound && !engineSound.paused) { engineSound.pause(); }
     const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ'); 
