@@ -16,7 +16,7 @@
     #cameraModeIndicator { }
     #aerodromeIndicator { color: #00ff00; }
     #aerodromeArrow { display: inline-block; transform-origin: center center; font-weight: bold; margin-right: 5px; }
-    #waypointIndicator { color: #00ffff; margin-top: 5px;}
+    #waypointIndicator { color: #00ffff; margin-top: 5px;} /* Стиль для індикатора маршруту */
     #fuelGaugeContainer { width: 200px; margin-top: 15px; margin-bottom: 5px; position: relative; display: flex; flex-direction: column; align-items: center;}
     #fuelGauge { width: 160px; height: 80px; border-radius: 160px 160px 0 0; background: conic-gradient(from -90deg at 50% 100%, #ff4500 0% 12.5%, #ffd700 12.5% 25%, #32cd32 25% 50%, #555c62 50% 100%); border: 2px solid #888; border-bottom: none; position: relative; overflow: hidden; box-sizing: border-box; }
     #fuelGauge::before { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 130px; height: 65px; background: rgba(0, 0, 0, 0.7); border-radius: 130px 130px 0 0; z-index: 1; }
@@ -90,26 +90,29 @@
   const missileSound = document.getElementById('missileSound');
   let fuelNeedle, fuelValueDigital;  
   let aerodromeArrowElement, aerodromeDistanceElement;  
-  let nextWaypointInfoElement; 
+  let nextWaypointInfoElement; // Для HUD маршруту
 
+  // --- НАЛАШТУВАННЯ МАРШРУТУ ---
   let waypoints = [];  
   let waypointCoordinates = [];  
   let currentWaypointIndex = 0;  
-  const WAYPOINT_REACH_THRESHOLD = 80; 
+  const WAYPOINT_REACH_THRESHOLD = 80; // Збільшено для легшого проходження
   let waypointLine = null;  
-  const WAYPOINT_COLOR_PASSED = 0x808080; 
-  const WAYPOINT_COLOR_CURRENT = 0xffff00; 
-  const WAYPOINT_COLOR_NEXT = 0x00ff00;     
+  const WAYPOINT_COLOR_PASSED = 0x808080; // Сірий
+  const WAYPOINT_COLOR_CURRENT = 0xffff00; // Жовтий
+  const WAYPOINT_COLOR_NEXT = 0x00ff00;     // Зелений
+  // --- КІНЕЦЬ НАЛАШТУВАНЬ МАРШРУТУ ---
 
   const KNOTS_TO_MPS = 0.514444;  
   const NORMAL_TAKEOFF_SPEED_KNOTS = 72;
-  const ASSISTED_TAKEOFF_SPEED_MPS = KNOTS_TO_MPS * 60; 
+  // --- Додамо константи, які використовуються в updateGameState та інших місцях ---
+  const ASSISTED_TAKEOFF_SPEED_MPS = KNOTS_TO_MPS * 60; // Приблизно 60 вузлів
   const NORMAL_TAKEOFF_SPEED_MPS = KNOTS_TO_MPS * NORMAL_TAKEOFF_SPEED_KNOTS;
-  const STALL_SPEED_MPS = KNOTS_TO_MPS * 55; 
-  const BRAKING_FORCE = 10; 
-  const MAX_FUEL_LITERS = 300; 
-  const MIN_ASSISTED_LIFTOFF_VSPEED = 1.5; 
-  
+  const STALL_SPEED_MPS = KNOTS_TO_MPS * 55; // Швидкість звалювання
+  const BRAKING_FORCE = 10; // Сила гальмування на землі
+  const MAX_FUEL_LITERS = 300; // Максимальна кількість пального в літрах
+  const MIN_ASSISTED_LIFTOFF_VSPEED = 1.5; // Мінімальна вертикальна швидкість для допомоги при зльоті
+  // ---
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
   const aerodromePosition = new THREE.Vector3(0, 0, 0);  
@@ -126,15 +129,18 @@
     if (waypointLine) { scene.remove(waypointLine); waypointLine.geometry.dispose(); waypointLine.material.dispose(); waypointLine = null;}
     waypoints.forEach(wp => scene.remove(wp));  
     waypoints = [];  
+
     const waypointMaterialTemplate = new THREE.MeshBasicMaterial({ wireframe: true, opacity: 0.6, transparent: true });
+    
     waypointCoordinates.forEach((coord, index) => {
         const waypointGeometry = new THREE.TorusGeometry(WAYPOINT_REACH_THRESHOLD * 0.6, 5, 8, 20);         
-        const waypointMesh = new THREE.Mesh(waypointGeometry, waypointMaterialTemplate.clone());
+        const waypointMesh = new THREE.Mesh(waypointGeometry, waypointMaterialTemplate.clone()); // Клонуємо матеріал
         waypointMesh.position.copy(coord);
-        waypointMesh.lookAt(scene.position); 
+        waypointMesh.lookAt(scene.position); // Орієнтуємо кільце до центру сцени або вгору
         scene.add(waypointMesh);
         waypoints.push(waypointMesh);
     });
+
     highlightCurrentWaypoint();
     updateWaypointLine();
   }
@@ -156,16 +162,18 @@
     if (currentWaypointIndex < waypointCoordinates.length && waypointCoordinates.length > 1) {
         let pointsForLine = [];
         if (bayraktarModel) {
-             pointsForLine.push(bayraktarModel.position.clone()); 
+             pointsForLine.push(bayraktarModel.position.clone()); // Починаємо лінію від літака
         }
+        // Додаємо поточну та всі наступні точки
         for (let i = currentWaypointIndex; i < waypointCoordinates.length; i++) {
             pointsForLine.push(waypointCoordinates[i]);
         }
+
         if(pointsForLine.length > 1){
             const lineGeometry = new THREE.BufferGeometry().setFromPoints(pointsForLine);
             const lineMaterial = new THREE.LineDashedMaterial({ color: 0x00ffff, linewidth: 1, scale:1, dashSize: 20, gapSize: 10 });
             waypointLine = new THREE.Line(lineGeometry, lineMaterial);
-            waypointLine.computeLineDistances(); 
+            waypointLine.computeLineDistances(); // Потрібно для LineDashedMaterial
             scene.add(waypointLine);
         }
     }
@@ -191,12 +199,14 @@
     }
   }
 
+  // ОСЬ ТУТ ВСТАВЛЕНО ФУНКЦІЮ setupEventListeners
   function setupEventListeners() {
     document.addEventListener('keydown', (event) => {
+        // Використовуємо event.code для незалежності від розкладки, але також зберігаємо event.key для можливої обробки українських літер
         keysPressed[event.code] = true;
         keysPressed[event.key.toLowerCase()] = true; 
 
-        if (event.code === 'KeyC') { 
+        if (event.code === 'KeyC') { // Зміна камери
             currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
             updateCameraModeIndicator();
             if (orbitControls) { 
@@ -204,6 +214,7 @@
             }
         }
         
+        // Запуск двигуна по натисканню 'R' (або 'К')
         if ((event.code === 'KeyR' || event.key.toLowerCase() === 'к') && !gameState.engineOn && !keysPressed.engineStartInitiated) { 
             keysPressed.engineStartInitiated = true; 
             if (startSound) startSound.play().catch(e => console.warn("Не вдалося відтворити звук запуску", e));
@@ -214,10 +225,17 @@
                 } else {
                     console.log("Немає пального для запуску двигуна.");
                 }
+                // Скидання engineStartInitiated може бути в keyup або після успішного запуску,
+                // щоб уникнути конфлікту з логікою зупинки утриманням.
+                // Поки що залишимо скидання в keyup.
             }, 500); 
         }
 
-        if (event.key === '6') { /* Handled in updateGameState */ }
+        // Допоміжний зліт по натисканню '6' (якщо інші умови виконуються в updateGameState)
+        if (event.key === '6') { // 'Digit6' для event.code
+            // Логіка для 'Digit6' (допоміжний зліт) вже є в updateGameState,
+            // keysPressed['Digit6'] там перевіряється.
+        }
     });
 
     document.addEventListener('keyup', (event) => {
@@ -226,15 +244,20 @@
 
         if (event.code === 'KeyR' || event.key.toLowerCase() === 'к') {
             keysPressed.engineStartInitiated = false; 
+            // Логіка зупинки двигуна утриманням 'R' має бути в updateGameState.
+            // Тут можна скинути флаг, якщо зупинка відбувається по відпусканню після утримання.
         }
         
+        // Запуск ракети по відпусканню 'Space' (якщо в повітрі)
+        // Або по натисканню, якщо змінити на 'keydown'
         if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
             console.log("Запуск ракети!");
             if (missileSound) {
-                missileSound.currentTime = 0; 
+                missileSound.currentTime = 0; // Починаємо звук з початку
                 missileSound.play().catch(e => console.warn("Не вдалося відтворити звук ракети", e));
             }
-            gameState.score++; 
+            gameState.score++; // Приклад: збільшуємо рахунок
+            // Тут має бути ваша логіка створення та запуску об'єкта ракети
         }
     });
 
@@ -245,8 +268,10 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
     });
+
     keysPressed.engineStartInitiated = false; 
   }
+
 
   function init() {
     clock = new THREE.Clock();
@@ -293,14 +318,16 @@
     ground.receiveShadow = true; 
     scene.add(ground);
     
+    // === ВИЗНАЧЕННЯ КООРДИНАТ МАРШРУТУ ===
     waypointCoordinates = [
         new THREE.Vector3(0, 200, 1500),    
         new THREE.Vector3(800, 250, 2500),  
         new THREE.Vector3(200, 220, 3800),   
         new THREE.Vector3(-800, 180, 2500), 
-        new THREE.Vector3(0, 150, 500)       
+        new THREE.Vector3(0, 150, 500)       // Точка для повернення ближче до аеродрому
     ];
     createWaypointVisuals();
+    // === ===
 
     const gltfLoader = new GLTFLoader();
     const loadingDiv = document.getElementById('loading'); const progressSpan = document.getElementById('progress');
@@ -325,45 +352,49 @@
       },
       function (xhr) { if (xhr.lengthComputable) progressSpan.textContent = Math.round((xhr.loaded / xhr.total) * 100) + '%'; },
       function (error) {
-        console.error('GLTF loading error:', error); 
-        // ================================================================
-        // === ЗМІНЕНО ПОВІДОМЛЕННЯ ПРО ПОМИЛКУ ЗАВАНТАЖЕННЯ МОДЕЛІ ===
-        // ================================================================
-        loadingDiv.textContent = 'БПЛА на Регламенті технічного обслуговування'; 
-        progressSpan.textContent = ''; 
-        
-        const placeholderGeo = new THREE.BoxGeometry(5, 1, 3); 
-        const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-        bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); 
-        bayraktarModel.position.set(0, 0.5, 0);  
+        console.error('GLTF loading error:', error); loadingDiv.textContent = 'Помилка моделі. Плейсхолдер.'; progressSpan.textContent = '';
+        const placeholderGeo = new THREE.BoxGeometry(5, 1, 3); const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); bayraktarModel.position.set(0, 0.5, 0);  
         scene.add(bayraktarModel);
         if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
       }
     );
     
-    setupEventListeners(); 
+    setupEventListeners(); // Цей виклик тепер має працювати
     updateCameraModeIndicator();  
     updateFuelGauge();  
     updateAerodromeIndicator();
-    updateWaypointHUD(); 
+    updateWaypointHUD(); // Початкове оновлення HUD маршруту
     animate();
   }
   
   function updateGameState(deltaTime) {  
     if (!bayraktarModel) return;
 
-    const thrustAcceleration = 15; 
-    const dragFactor = 0.008; 
-    const baseLiftFactor = 0.025;  
-    const gravity = 9.81; 
-    const rotationSpeedInput = 1.5 * deltaTime;  
-    const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і']; 
+    // --- Логіка зупинки двигуна утриманням R ---
+    // (Цей блок потребує доопрацювання, якщо keysPressed['r'] або keysPressed['к'] тримається довго)
+    // Поки що, проста перевірка наявності натискання 'r' або 'к' не зовсім відповідає "утриманню"
+    // Для "утримання" потрібен таймер або лічильник часу утримання.
+    // Приклад: якщо (keysPressed['r'] || keysPressed['к']) { timeRHeld += deltaTime; if (timeRHeld > 1.0 && gameState.engineOn) { gameState.engineOn = false; /* ... */}} else { timeRHeld = 0;}
+    // Наразі, ця логіка просто вимкне двигун, якщо R/К натиснуто і двигун працює.
+    if (gameState.engineOn && (keysPressed['KeyR'] || keysPressed['к'])) { 
+        // Це місце для логіки зупинки двигуна утриманням.
+        // Поточна логіка в setupEventListeners запускає двигун.
+        // Для зупинки утриманням, можливо, треба перевіряти час утримання клавіші.
+        // Як тимчасове рішення, якщо 'R' натиснуто і двигун працює, можна його вимкнути,
+        // але це буде конфліктувати з логікою запуску.
+        // Краще, щоб setupEventListeners обробляв тільки старт, а тут була логіка зупинки.
+        // console.log("Клавіша R/К натиснута, двигун працює - потенційна зупинка");
+    }
+
+
+    const thrustAcceleration = 15; const dragFactor = 0.008; const baseLiftFactor = 0.025;  
+    const gravity = 9.81; const rotationSpeedInput = 1.5 * deltaTime;  
+    
+    let pitchChange = 0; let rollChange = 0; let yawChange = 0;  
+    const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і']; // 'і' українська
     const groundControlSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.7;  
     const groundPitchSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.4;  
-    
-    let pitchChange = 0; 
-    let rollChange = 0; 
-    let yawChange = 0;  
 
     if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {  
         if (keysPressed['KeyW'] || keysPressed['ц']) { pitchChange = rotationSpeedInput; } 
@@ -387,14 +418,11 @@
         if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
         if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
     }
-    if (!gameState.engineOn && gameState.throttle > 0 && !(keysPressed['KeyR'] || keysPressed['к'])) { gameState.throttle = 0; }
+    if (!gameState.engineOn && gameState.throttle > 0 && !(keysPressed['KeyR'] || keysPressed['к'])) { gameState.throttle = 0; } // Скидаємо газ, якщо двигун вимкнено (крім моменту старту)
     
-    bayraktarModel.rotateX(pitchChange); 
-    bayraktarModel.rotateZ(rollChange); 
-    bayraktarModel.rotateY(yawChange);
+    bayraktarModel.rotateX(pitchChange); bayraktarModel.rotateZ(rollChange); bayraktarModel.rotateY(yawChange);
     
-    let currentPitch = bayraktarModel.rotation.x; 
-    let currentRoll = bayraktarModel.rotation.z;
+    let currentPitch = bayraktarModel.rotation.x; let currentRoll = bayraktarModel.rotation.z;
     while (currentPitch > Math.PI) currentPitch -= 2 * Math.PI; while (currentPitch < -Math.PI) currentPitch += 2 * Math.PI;
     while (currentRoll > Math.PI) currentRoll -= 2 * Math.PI; while (currentRoll < -Math.PI) currentRoll += 2 * Math.PI;
     
@@ -403,6 +431,7 @@
     if (currentRoll > MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = MAX_ROLL_ANGLE_RAD;
     else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
 
+    // --- ОБЕРТАННЯ ГВИНТА ---
     if (propellerMesh) {
         if (gameState.engineOn && gameState.rpm > 0) {
             const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI;  
@@ -414,11 +443,13 @@
             } else { propellerMesh.quaternion.copy(initialPropellerQuaternion); }
         }
     }
+    // --- КІНЕЦЬ ОБЕРТАННЯ ГВИНТА ---
 
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0);  
     let drag = dragFactor * gameState.speed * gameState.speed;
     let currentBrakingForceApplied = 0;
-    if (keysPressed['Space'] && gameState.altitude <= 0.2) { currentBrakingForceApplied = BRAKING_FORCE; }
+    if ((keysPressed['Space']) && gameState.altitude <= 0.2) { currentBrakingForceApplied = BRAKING_FORCE; } // Гальма на землі
+    
     gameState.speed += (actualThrust - drag - currentBrakingForceApplied) * deltaTime; gameState.speed = Math.max(0, gameState.speed);  
     const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);  
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
@@ -471,6 +502,7 @@
         } gameState.altitude = bayraktarModel.position.y;  
     }
 
+    // --- ПЕРЕВІРКА ПРОХОДЖЕННЯ МАРШРУТНИХ ТОЧОК ---
     if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) {
         const currentTargetPosition = waypointCoordinates[currentWaypointIndex];
         if (bayraktarModel.position.distanceTo(currentTargetPosition) < WAYPOINT_REACH_THRESHOLD) {
@@ -479,9 +511,10 @@
             if (currentWaypointIndex >= waypointCoordinates.length) {
                 console.log("Маршрут завершено!");
             }
-            createWaypointVisuals(); 
+            createWaypointVisuals(); // Оновлюємо візуалізацію (кольори та лінію)
         }
     }
+    // --- КІНЕЦЬ ПЕРЕВІРКИ МАРШРУТНИХ ТОЧОК ---
     
     if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; gameState.fuel = Math.max(0, gameState.fuel); if (gameState.fuel === 0) { engineSound.pause(); engineSound.currentTime = 0; gameState.engineOn = false; gameState.throttle = 0; console.log("Пальне закінчилося. Двигун вимкнено."); } }
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
@@ -489,16 +522,107 @@
     else if (engineSound && !engineSound.paused) { engineSound.pause(); }
     
     const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
-    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); 
-    gameState.roll = THREE.MathUtils.radToDeg(euler.z); 
-    gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
+    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); gameState.roll = THREE.MathUtils.radToDeg(euler.z); gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
   }
   
-  function updateCamera(deltaTime) { /* ... same as before ... */ }
-  function updateHUD() { /* ... same as before ... */ }
-  function updateFuelGauge() { /* ... same as before ... */ }
-  function updateAerodromeIndicator() { /* ... same as before ... */ }
-  function animate() { /* ... same as before ... */ }
+  function updateCamera(deltaTime) {
+    if (!bayraktarModel) { return; }
+    switch (currentCameraMode) {
+      case CAMERA_MODES.FOLLOW:
+        orbitControls.enabled = false; if (bayraktarModel.visible === false) bayraktarModel.visible = true;
+        let desiredFollowPos = followCameraOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+        const minCameraHeightAboveGround = 2.5;  
+        if (desiredFollowPos.y < minCameraHeightAboveGround) { desiredFollowPos.y = minCameraHeightAboveGround; }
+        camera.position.lerp(desiredFollowPos, 0.1);  
+        let lookAtTargetForFollowCorrected = bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0));
+        if (lookAtTargetForFollowCorrected.y < 0.5 && desiredFollowPos.y > lookAtTargetForFollowCorrected.y + 0.5) { lookAtTargetForFollowCorrected.y = Math.max(0.2, desiredFollowPos.y - 1.0); }
+        else if (lookAtTargetForFollowCorrected.y > desiredFollowPos.y + 2.0 && desiredFollowPos.y < minCameraHeightAboveGround + 1.0) { lookAtTargetForFollowCorrected.y = desiredFollowPos.y + 1.0; }
+        camera.lookAt(lookAtTargetForFollowCorrected);
+        break;
+      case CAMERA_MODES.TAIL_VIEW:
+        orbitControls.enabled = false; if (bayraktarModel.visible === false) bayraktarModel.visible = true;
+        const worldCameraTailPosition = tailViewPositionOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+        camera.position.copy(worldCameraTailPosition);
+        const worldLookAtPropellerPosition = tailViewLookAtOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+        camera.lookAt(worldLookAtPropellerPosition);
+        break;
+      case CAMERA_MODES.ORBIT:
+        orbitControls.enabled = true; if (bayraktarModel.visible === false) bayraktarModel.visible = true;
+        if (orbitControls.object.position.distanceTo(orbitControls.target) > orbitControls.maxDistance * 1.5) {
+            const offset = new THREE.Vector3().subVectors(orbitControls.object.position, orbitControls.target).normalize().multiplyScalar(orbitControls.maxDistance * 0.8);
+            orbitControls.object.position.copy(orbitControls.target).add(offset);
+        }
+        orbitControls.target.copy(bayraktarModel.position); orbitControls.update(deltaTime);
+        break;
+    }
+  }
+
+  function updateHUD() {
+    const altitudeEl = document.getElementById('altitude'); if (altitudeEl) altitudeEl.textContent = gameState.altitude.toFixed(0) + ' м';
+    const pitchEl = document.getElementById('pitch'); if (pitchEl) pitchEl.textContent = gameState.pitch.toFixed(1) + '°';
+    const rollEl = document.getElementById('roll'); if (rollEl) rollEl.textContent = gameState.roll.toFixed(1) + '°';
+    const speedEl = document.getElementById('speed'); if (speedEl) speedEl.textContent = (gameState.speed * 3.6).toFixed(0) + ' км/год';
+    const headingEl = document.getElementById('heading'); if (headingEl) headingEl.textContent = gameState.heading.toFixed(0) + '°';
+    const vspeedEl = document.getElementById('vspeed'); if (vspeedEl) vspeedEl.textContent = (gameState.vSpeed * 60).toFixed(0) + ' м/хв';
+    const throttleEl = document.getElementById('throttle'); if (throttleEl) throttleEl.textContent = (gameState.throttle * 100).toFixed(0) + '%';
+    const rpmEl = document.getElementById('rpm'); if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
+    const scoreEl = document.getElementById('score'); if (scoreEl) scoreEl.textContent = gameState.score;
+  }
+  
+  function updateFuelGauge() {
+    if (!fuelNeedle || !fuelValueDigital) return;  
+    const currentFuelLiters = (gameState.fuel / 100) * MAX_FUEL_LITERS;  
+    fuelValueDigital.textContent = currentFuelLiters.toFixed(1) + ' lt';
+    const normalizedFuel = Math.max(0, Math.min(currentFuelLiters / MAX_FUEL_LITERS, 1));
+    const angle = (normalizedFuel * 180) - 90;  
+    fuelNeedle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+    if (normalizedFuel < 0.125) { fuelValueDigital.style.color = '#ff4500'; }  
+    else if (normalizedFuel < 0.25) { fuelValueDigital.style.color = '#ffd700';}  
+    else { fuelValueDigital.style.color = 'white'; }
+  }
+
+  function updateAerodromeIndicator() {
+    if (!bayraktarModel || !aerodromeArrowElement || !aerodromeDistanceElement) {
+        if (aerodromeArrowElement) aerodromeArrowElement.textContent = '-';
+        if (aerodromeDistanceElement) aerodromeDistanceElement.textContent = '---- м';
+        return;
+    }
+    const distance = bayraktarModel.position.distanceTo(aerodromePosition);
+    aerodromeDistanceElement.textContent = Math.round(distance) + ' м';
+    const dirToAerodromeWorld = new THREE.Vector3().subVectors(aerodromePosition, bayraktarModel.position);
+    dirToAerodromeWorld.y = 0; dirToAerodromeWorld.normalize();
+    const aircraftForwardWorld = new THREE.Vector3(0, 0, 1);  
+    aircraftForwardWorld.applyQuaternion(bayraktarModel.quaternion);
+    aircraftForwardWorld.y = 0; aircraftForwardWorld.normalize();
+    if (dirToAerodromeWorld.lengthSq() === 0 || aircraftForwardWorld.lengthSq() === 0) {  
+        aerodromeArrowElement.style.transform = 'rotate(0deg)';
+        aerodromeArrowElement.textContent = (distance < 50) ? '📍' : '-';  
+        return;
+    }
+    let angleToTarget = aircraftForwardWorld.angleTo(dirToAerodromeWorld);
+    const cross = new THREE.Vector3().crossVectors(aircraftForwardWorld, dirToAerodromeWorld);
+    if (cross.y < 0) { angleToTarget = -angleToTarget; }
+    const angleDeg = THREE.MathUtils.radToDeg(angleToTarget);
+    aerodromeArrowElement.textContent = '↑';  
+    aerodromeArrowElement.style.transform = `rotate(${angleDeg}deg)`;
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const deltaTime = clock.getDelta();
+    if (mixer) mixer.update(deltaTime);
+    if(bayraktarModel) {  
+        updateGameState(deltaTime);
+        updateCamera(deltaTime);
+    }
+    updateHUD();
+    updateFuelGauge();  
+    updateAerodromeIndicator();
+    updateWaypointLine(); // Оновлюємо лінію маршруту в кожному кадрі
+    updateWaypointHUD();  // Оновлюємо HUD маршруту
+    renderer.render(scene, camera);
+  }
+
   init();  
 </script>
 </body>
