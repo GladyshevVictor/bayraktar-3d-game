@@ -484,8 +484,6 @@
     gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
   }
   
-  }
-  
   function updateCamera(deltaTime) {
     if (!bayraktarModel) { return; }
     switch (currentCameraMode) {
