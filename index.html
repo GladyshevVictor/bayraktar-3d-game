@@ -79,7 +79,7 @@
   let bayraktarModel, mixer;
   let propellerMesh = null;  
   let initialPropellerQuaternion = null;  
-  let ambientLight, directionalLight;
+  let ambientLight, directionalLight, stars;
   
   const PROPELLER_RETURN_SPEED = 0.05;  
   const modelBoundingBox = new THREE.Box3();  
@@ -134,6 +134,35 @@
   const AUTOPILOT_TURN_SENSITIVITY = 1.2;
   const AUTOPILOT_CORRECTION_SPEED = 0.5;
 
+  function createStars() {
+    const starVertices = [];
+    for (let i = 0; i < 10000; i++) {
+        const x = THREE.MathUtils.randFloatSpread(20000);
+        const y = THREE.MathUtils.randFloatSpread(20000);
+        const z = THREE.MathUtils.randFloatSpread(20000);
+        
+        const distance = Math.sqrt(x*x + y*y + z*z);
+        if (distance > 8000 && y > -1000) { 
+            starVertices.push(x, y, z);
+        }
+    }
+
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+
+    const starMaterial = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 5,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending
+    });
+
+    stars = new THREE.Points(starGeometry, starMaterial);
+    scene.add(stars);
+  }
+
   function updateSunAndSky() {
     if (!directionalLight || !ambientLight || !scene) return;
     const now = new Date();
@@ -157,6 +186,12 @@
         scene.background.copy(nightSkyColor);
     }
     document.body.style.backgroundColor = `#${scene.background.getHexString()}`;
+
+    if (stars) {
+        const nightFactor = 1 - Math.max(0, Math.sin(sunAngle));
+        stars.material.opacity = Math.pow(nightFactor, 3);
+        stars.visible = stars.material.opacity > 0.01;
+    }
   }
   
   function createWaypointVisuals() {
@@ -202,7 +237,7 @@
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
         const distance = Math.round(bayraktarModel.position.distanceTo(target));
-        nextWaypointInfoElement.textContent = `Точка ${currentWaypointIndex + 1} (${distance} м)`;
+        nextWaypointInfoElement.textContent = `Точка <span class="math-inline">\{currentWaypointIndex \+ 1\} \(</span>{distance} м)`;
     } else if (currentWaypointIndex >= waypointCoordinates.length) {
         if (gameState.autopilotState !== AUTOPILOT_STATE.OFF) {
             gameState.autopilotState = AUTOPILOT_STATE.OFF; 
@@ -270,16 +305,19 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
-    orbitControls = new OrbitControls(camera, renderer.domElement);
-    orbitControls.enableDamping = true; orbitControls.dampingFactor = 0.1; orbitControls.enabled = false;  
-    orbitControls.minDistance = 2; orbitControls.maxDistance = 400;  
-    orbitControls.maxPolarAngle = Math.PI / 2 - 0.05;
     
     ambientLight = new THREE.AmbientLight(0xffffff, 0.6); 
     scene.add(ambientLight);
     directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); 
     directionalLight.castShadow = true; 
     scene.add(directionalLight);
+    
+    createStars(); 
+    
+    orbitControls = new OrbitControls(camera, renderer.domElement);
+    orbitControls.enableDamping = true; orbitControls.dampingFactor = 0.1; orbitControls.enabled = false;  
+    orbitControls.minDistance = 2; orbitControls.maxDistance = 400;  
+    orbitControls.maxPolarAngle = Math.PI / 2 - 0.05;
     
     fuelNeedle = document.getElementById('fuelNeedle');
     fuelValueDigital = document.getElementById('fuelValueDigital');
@@ -460,7 +498,7 @@
             break;
     }
     
-    if (!gameState.engineOn && gameState.throttle > 0 && !keysPressed.engineStartInitiated) { gameState.throttle = 0; }
+    if (!gameState.engineOn && gameState.throttle > 0) { gameState.throttle = 0; }
     
     bayraktarModel.rotateX(pitchChange); 
     bayraktarModel.rotateZ(rollChange); 
@@ -487,6 +525,7 @@
         }
     }
     
+    const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0);  
     let drag = dragFactor * gameState.speed * gameState.speed;
     let currentBrakingForceApplied = 0;
@@ -519,7 +558,6 @@
              else if (modelBoundingBox.min.y > 0 && modelBoundingBox.min.y < onGroundThreshold * 0.5) { bayraktarModel.position.y -= modelBoundingBox.min.y; }
         } lift = 0;  
     } else if (gameState.altitude <= 0.1) {  
-        const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
         let allowTakeoff = false; let isAssistedAttempt = false;
         if ((keysPressed['Digit6']) && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS && gameState.engineOn) { allowTakeoff = true; isAssistedAttempt = true; }  
         if (gameState.speed >= NORMAL_TAKEOFF_SPEED_MPS && lift > gravity && playerIsPitchingUp && gameState.engineOn) { allowTakeoff = true; }  
