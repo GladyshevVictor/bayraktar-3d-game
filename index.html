@@ -274,7 +274,7 @@
 
 
   function init() {
-    clock = new THREE.Clock();
+   clock = new THREE.Clock();
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);  
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000);
@@ -297,16 +297,35 @@
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
     
     const textureLoader = new THREE.TextureLoader();
-    const runwayTexture = textureLoader.load('runway_texture.png', 
-      () => { /* success */ }, 
+
+    // ================================================================
+    // === ОНОВЛЕННЯ ТЕКСТУРИ ЗЛІТНОЇ СМУГИ ===
+    // ================================================================
+    // Завантажуємо нову, безшовну текстуру асфальту
+    const runwayTexture = textureLoader.load('Asphalt015_1K-Color.jpg', 
+      () => { console.log("Текстура асфальту завантажена."); }, 
       undefined, 
-      () => { console.warn("Runway texture 'runway_texture.png' not found or error loading."); }
+      () => { console.warn("Текстура 'Asphalt015_1K-Color.jpg' не знайдена або помилка завантаження."); }
     );
-    runwayTexture.wrapS = THREE.RepeatWrapping; runwayTexture.wrapT = THREE.RepeatWrapping; runwayTexture.repeat.set(1, 1); 
+    // Вмикаємо режим повторення
+    runwayTexture.wrapS = THREE.RepeatWrapping; 
+    runwayTexture.wrapT = THREE.RepeatWrapping; 
+    
+    // Встановлюємо, скільки разів текстура повторюватиметься
+    // Ці значення можна підібрати, щоб масштаб асфальту виглядав реалістично
+    runwayTexture.repeat.set(15, 200);   
+    
     if (renderer.capabilities.getMaxAnisotropy) {
         runwayTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     }
-    const runwayMaterial = new THREE.MeshStandardMaterial({ map: runwayTexture, color: runwayTexture ? 0xffffff : 0x555555, roughness: 0.8, metalness: 0.2 });
+    const runwayMaterial = new THREE.MeshStandardMaterial({ 
+        map: runwayTexture, 
+        color: 0xffffff, // Колір тепер не потрібен, якщо текстура кольорова
+        roughness: 0.8, 
+        metalness: 0.1 // Трохи зменшив металевість для асфальту
+    });
+    // ================================================================
+    
     const runway = new THREE.Mesh( new THREE.PlaneGeometry(200, 3000), runwayMaterial ); 
     runway.rotation.x = -Math.PI / 2; 
     runway.receiveShadow = true; 
