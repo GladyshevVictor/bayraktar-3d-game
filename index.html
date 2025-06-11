@@ -4,18 +4,18 @@
   <meta charset="UTF-8">
   <title>Bayraktar 3D</title>
   <style>
-   html, body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-body { 
-  background: #87CEEB;
-}
-canvas { 
-  display: block; 
-}
-    #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-family: Arial, sans-serif; font-size: 18px; text-align: center; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    body { 
+      background: #87CEEB; /* Фон сторінки кольору неба */
+    }
+    canvas { 
+      display: block; 
+    }
+    #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-family: Arial, sans-serif; font-size: 18px; text-align: center; text-shadow: 1px 1px 2px black; }
     #hud { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial, sans-serif; font-size: 14px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; display: flex; flex-direction: column; gap: 8px; }
     #dashboard { position: absolute; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.7); color: white; font-family: Arial, sans-serif; font-size: 12px; padding: 10px 15px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; width: 230px; }
     #dashboard div:not(#fuelGaugeContainer):not(#fuelGauge) { display: flex; justify-content: space-between; } 
@@ -48,7 +48,7 @@ canvas {
 <div id="hud">
     <div>Цілі знищено: <span id="score">0</span></div>
     <div id="cameraModeIndicator">Режим камери: <span id="currentCameraModeName">Слідування</span></div>
-    <div id="autopilotIndicator" style="display: none;">АВТОПІЛОТ УВІМКНЕНО</div>
+    <div id="autopilotIndicator" style="display: none;">АВТОПІЛОТ</div>
     <div id="aerodromeIndicator">Аеродром: <span id="aerodromeArrow">↑</span> (<span id="aerodromeDistance">--</span> м)</div>
     <div id="waypointIndicator">Наступна точка: <span id="nextWaypointInfo">--</span></div>
 </div>
@@ -92,8 +92,9 @@ canvas {
   let bayraktarModel, mixer;
   let propellerMesh = null;  
   let initialPropellerQuaternion = null;  
+  let ambientLight, directionalLight;
+  
   const PROPELLER_RETURN_SPEED = 0.05;  
-
   const modelBoundingBox = new THREE.Box3();  
   const engineSound = document.getElementById('engineSound');
   const startSound = document.getElementById('startSound');
@@ -124,12 +125,19 @@ canvas {
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
   const aerodromePosition = new THREE.Vector3(0, 0, 0);  
+
+  const AUTOPILOT_STATE = {
+    OFF: 0,
+    TAKEOFF: 1,
+    NAVIGATE: 2,
+    LANDING: 3,
+  };
   
   const gameState = { 
       fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, 
       vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false,
       rKeyHoldTime: 0,
-      autopilotOn: false
+      autopilotState: AUTOPILOT_STATE.OFF 
     };
   const keysPressed = {};
   const CAMERA_MODES = { FOLLOW: 0, TAIL_VIEW: 1, ORBIT: 2, };
@@ -144,6 +152,31 @@ canvas {
   const AUTOPILOT_TURN_SENSITIVITY = 1.2;
   const AUTOPILOT_CORRECTION_SPEED = 0.5;
 
+  function updateSunAndSky() {
+    if (!directionalLight || !ambientLight || !scene) return;
+    const now = new Date();
+    const hours = now.getHours() + now.getMinutes() / 60;
+    const sunAngle = (hours / 12 - 0.5) * Math.PI;
+    const sunDistance = 4000;
+    directionalLight.position.x = sunDistance * Math.cos(sunAngle);
+    directionalLight.position.y = sunDistance * Math.sin(sunAngle);
+    directionalLight.position.z = 1000;
+    const isDay = directionalLight.position.y > 0;
+    directionalLight.intensity = isDay ? 1.5 : 0;
+    ambientLight.intensity = isDay ? 0.6 : 0.1;
+    const daySkyColor = new THREE.Color(0x87CEEB);
+    const nightSkyColor = new THREE.Color(0x000020);
+    const sunriseSunsetColor = new THREE.Color(0xFF8C00);
+    if (isDay) {
+        const sunriseFactor = Math.sin(sunAngle);
+        const dynamicDayColor = daySkyColor.clone().lerp(sunriseSunsetColor, 1 - Math.pow(sunriseFactor, 0.5));
+        scene.background.copy(dynamicDayColor);
+    } else {
+        scene.background.copy(nightSkyColor);
+    }
+    document.body.style.backgroundColor = `#${scene.background.getHexString()}`;
+  }
+  
   function createWaypointVisuals() {
     if (waypointLine) { scene.remove(waypointLine); waypointLine.geometry.dispose(); waypointLine.material.dispose(); waypointLine = null;}
     waypoints.forEach(wp => scene.remove(wp));  
@@ -187,10 +220,10 @@ canvas {
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
         const distance = Math.round(bayraktarModel.position.distanceTo(target));
-        nextWaypointInfoElement.textContent = `Точка ${currentWaypointIndex + 1} (${distance} м)`;
+        nextWaypointInfoElement.textContent = `Точка <span class="math-inline">\{currentWaypointIndex \+ 1\} \(</span>{distance} м)`;
     } else if (currentWaypointIndex >= waypointCoordinates.length) {
-        if (gameState.autopilotOn) {
-            gameState.autopilotOn = false; // Вимикаємо автопілот в кінці маршруту
+        if (gameState.autopilotState !== AUTOPILOT_STATE.OFF) {
+            gameState.autopilotState = AUTOPILOT_STATE.OFF; 
             document.getElementById('autopilotIndicator').style.display = 'none';
         }
         nextWaypointInfoElement.textContent = "Маршрут завершено!";
@@ -218,10 +251,23 @@ canvas {
             }, 500); 
         }
         if (event.code === 'KeyP' || event.key.toLowerCase() === 'з') {
-            gameState.autopilotOn = !gameState.autopilotOn;
             const indicator = document.getElementById('autopilotIndicator');
-            indicator.style.display = gameState.autopilotOn ? 'block' : 'none';
-            console.log("Автопілот " + (gameState.autopilotOn ? "увімкнено" : "вимкнено"));
+            if (gameState.autopilotState === AUTOPILOT_STATE.OFF) {
+                if (gameState.altitude < 1 && gameState.engineOn) {
+                    gameState.autopilotState = AUTOPILOT_STATE.TAKEOFF;
+                    indicator.textContent = 'АВТОПІЛОТ: ЗЛІТ';
+                    console.log("Автопілот: режим ЗЛІТ увімкнено.");
+                } else if (gameState.altitude >= 1) {
+                    gameState.autopilotState = AUTOPILOT_STATE.NAVIGATE;
+                    indicator.textContent = 'АВТОПІЛОТ: НАВІГАЦІЯ';
+                    console.log("Автопілот: режим НАВІГАЦІЯ увімкнено.");
+                }
+                indicator.style.display = 'block';
+            } else {
+                gameState.autopilotState = AUTOPILOT_STATE.OFF;
+                indicator.style.display = 'none';
+                console.log("Автопілот вимкнено.");
+            }
         }
     });
     document.addEventListener('keyup', (event) => {
@@ -260,16 +306,20 @@ canvas {
     orbitControls.minDistance = 2; orbitControls.maxDistance = 400;  
     orbitControls.maxPolarAngle = Math.PI / 2 - 0.05;
     
+    ambientLight = new THREE.AmbientLight(0xffffff, 0.6); 
+    scene.add(ambientLight);
+    directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); 
+    directionalLight.castShadow = true; 
+    scene.add(directionalLight);
+    
     fuelNeedle = document.getElementById('fuelNeedle');
     fuelValueDigital = document.getElementById('fuelValueDigital');
     aerodromeArrowElement = document.getElementById('aerodromeArrow');
     aerodromeDistanceElement = document.getElementById('aerodromeDistance');
     nextWaypointInfoElement = document.getElementById('nextWaypointInfo');
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
     
     const textureLoader = new THREE.TextureLoader();
-    const runwayTexture = textureLoader.load('Asphalt1Color.png', () => { console.log("Текстура асфальту завантажена."); }, undefined, () => { console.warn("Текстура 'Asphalt1Color.png' не знайдена."); });
+    const runwayTexture = textureLoader.load('Asphalt015Color.png', () => { console.log("Текстура асфальту завантажена."); }, undefined, () => { console.warn("Текстура 'Asphalt015Color.png' не знайдена."); });
     runwayTexture.wrapS = THREE.RepeatWrapping; 
     runwayTexture.wrapT = THREE.RepeatWrapping; 
     runwayTexture.repeat.set(15, 200);   
@@ -358,55 +408,95 @@ canvas {
     let rollChange = 0; 
     let yawChange = 0;  
 
-    if (gameState.autopilotOn && currentWaypointIndex < waypointCoordinates.length) {
-        const targetPosition = waypointCoordinates[currentWaypointIndex];
-        const dirToTarget = new THREE.Vector3().subVectors(targetPosition, bayraktarModel.position);
-        dirToTarget.y = 0; 
-        dirToTarget.normalize();
-        const forwardDir = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
-        forwardDir.y = 0;
-        forwardDir.normalize();
-        let headingError = forwardDir.angleTo(dirToTarget);
-        const cross = new THREE.Vector3().crossVectors(forwardDir, dirToTarget);
-        if (cross.y < 0) { headingError = -headingError; }
+    switch (gameState.autopilotState) {
+        case AUTOPILOT_STATE.OFF:
+            // --- ЛОГІКА РУЧНОГО КЕРУВАННЯ ---
+            const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
+            if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {  
+                if (keysPressed['KeyW'] || keysPressed['ц']) { pitchChange = rotationSpeedInput; } 
+                if (keysPressed['KeyS'] || keysPressed['і']) { pitchChange = -rotationSpeedInput; }  
+                if (keysPressed['KeyA'] || keysPressed['ф']) { rollChange = rotationSpeedInput; } 
+                if (keysPressed['KeyD'] || keysPressed['в']) { rollChange = -rotationSpeedInput; }    
+            } else {
+                rollChange = 0;  
+                if ((keysPressed['KeyS'] || keysPressed['і']) && gameState.speed > groundPitchSpeedThreshold) { 
+                    if (bayraktarModel.rotation.x > -MAX_PITCH_ANGLE_RAD * 0.6) { pitchChange = -rotationSpeedInput * 0.3; } 
+                } else if ((keysPressed['KeyW'] || keysPressed['ц']) && gameState.speed > groundPitchSpeedThreshold) { 
+                    if (bayraktarModel.rotation.x < MAX_PITCH_ANGLE_RAD * 0.3) { pitchChange = rotationSpeedInput * 0.2; } 
+                } else { pitchChange = 0; }
+            }
+            
+            const yawEffectiveness = (gameState.altitude > 0.1) ? 1.0 : 0.6;
+            if (keysPressed['KeyQ'] || keysPressed['й']) { yawChange = rotationSpeedInput * yawEffectiveness; } 
+            if (keysPressed['KeyE'] || keysPressed['у']) { yawChange = -rotationSpeedInput * yawEffectiveness; }
+            
+            if (gameState.engineOn) {
+                if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 1.0 * deltaTime);
+                if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 1.0 * deltaTime);
+            }
+            break;
 
-        const desiredRoll = THREE.MathUtils.clamp(headingError * AUTOPILOT_TURN_SENSITIVITY, -AUTOPILOT_MAX_BANK_ANGLE_RAD, AUTOPILOT_MAX_BANK_ANGLE_RAD);
-        const currentRoll = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').z;
-        rollChange = (desiredRoll - currentRoll) * AUTOPILOT_CORRECTION_SPEED;
+        case AUTOPILOT_STATE.TAKEOFF:
+            const indicatorTakeoff = document.getElementById('autopilotIndicator');
+            if (indicatorTakeoff.textContent !== 'АВТОПІЛОТ: ЗЛІТ') indicatorTakeoff.textContent = 'АВТОПІЛОТ: ЗЛІТ';
 
-        const altitudeError = targetPosition.y - gameState.altitude;
-        const desiredPitch = THREE.MathUtils.clamp(altitudeError * AUTOPILOT_PITCH_CORRECTION_FACTOR, -MAX_PITCH_ANGLE_RAD, MAX_PITCH_ANGLE_RAD);
-        const currentPitch = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').x;
-        pitchChange = (desiredPitch - currentPitch) * AUTOPILOT_CORRECTION_SPEED;
+            if (gameState.engineOn) {
+                gameState.throttle = 1.0;
+            }
 
-        if (gameState.engineOn) {
-            gameState.throttle = 0.75;
-        }
-    } else {
-        // --- ЛОГІКА РУЧНОГО КЕРУВАННЯ ---
-        const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
-        if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {  
-            if (keysPressed['KeyW'] || keysPressed['ц']) { pitchChange = rotationSpeedInput; } 
-            if (keysPressed['KeyS'] || keysPressed['і']) { pitchChange = -rotationSpeedInput; }  
-            if (keysPressed['KeyA'] || keysPressed['ф']) { rollChange = rotationSpeedInput; } 
-            if (keysPressed['KeyD'] || keysPressed['в']) { rollChange = -rotationSpeedInput; }    
-        } else {
-            rollChange = 0;  
-            if ((keysPressed['KeyS'] || keysPressed['і']) && gameState.speed > groundPitchSpeedThreshold) { 
-                if (bayraktarModel.rotation.x > -MAX_PITCH_ANGLE_RAD * 0.6) { pitchChange = -rotationSpeedInput * 0.3; } 
-            } else if ((keysPressed['KeyW'] || keysPressed['ц']) && gameState.speed > groundPitchSpeedThreshold) { 
-                if (bayraktarModel.rotation.x < MAX_PITCH_ANGLE_RAD * 0.3) { pitchChange = rotationSpeedInput * 0.2; } 
-            } else { pitchChange = 0; }
-        }
-        
-        const yawEffectiveness = (gameState.altitude > 0.1) ? 1.0 : 0.6;
-        if (keysPressed['KeyQ'] || keysPressed['й']) { yawChange = rotationSpeedInput * yawEffectiveness; } 
-        if (keysPressed['KeyE'] || keysPressed['у']) { yawChange = -rotationSpeedInput * yawEffectiveness; }
-        
-        if (gameState.engineOn) {
-            if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 1.0 * deltaTime);
-            if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 1.0 * deltaTime);
-        }
+            let takeoffHeadingError = (0 - gameState.heading + 360) % 360;
+            if (takeoffHeadingError > 180) takeoffHeadingError -= 360;
+            yawChange = THREE.MathUtils.degToRad(takeoffHeadingError) * 0.5;
+            rollChange = 0;
+
+            if (gameState.speed > NORMAL_TAKEOFF_SPEED_MPS) {
+                const takeoffPitch = THREE.MathUtils.degToRad(7);
+                const currentPitchTakeoff = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').x;
+                pitchChange = (takeoffPitch - currentPitchTakeoff) * AUTOPILOT_CORRECTION_SPEED;
+            }
+
+            if (gameState.altitude > 30) {
+                console.log("Автопілот: зліт завершено, перехід в режим НАВІГАЦІЯ.");
+                gameState.autopilotState = AUTOPILOT_STATE.NAVIGATE;
+            }
+            break;
+
+        case AUTOPILOT_STATE.NAVIGATE:
+             const indicatorNav = document.getElementById('autopilotIndicator');
+            if (indicatorNav.textContent !== 'АВТОПІЛОТ: НАВІГАЦІЯ') indicatorNav.textContent = 'АВТОПІЛОТ: НАВІГАЦІЯ';
+
+            if (currentWaypointIndex < waypointCoordinates.length) {
+                const targetPosition = waypointCoordinates[currentWaypointIndex];
+                const dirToTarget = new THREE.Vector3().subVectors(targetPosition, bayraktarModel.position);
+                dirToTarget.y = 0; dirToTarget.normalize();
+                const forwardDir = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
+                forwardDir.y = 0; forwardDir.normalize();
+                let headingErrorNav = forwardDir.angleTo(dirToTarget);
+                const cross = new THREE.Vector3().crossVectors(forwardDir, dirToTarget);
+                if (cross.y < 0) { headingErrorNav = -headingErrorNav; }
+
+                const desiredRoll = THREE.MathUtils.clamp(headingErrorNav * AUTOPILOT_TURN_SENSITIVITY, -AUTOPILOT_MAX_BANK_ANGLE_RAD, AUTOPILOT_MAX_BANK_ANGLE_RAD);
+                const currentRoll = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').z;
+                rollChange = (desiredRoll - currentRoll) * AUTOPILOT_CORRECTION_SPEED;
+
+                const altitudeError = targetPosition.y - gameState.altitude;
+                const desiredPitch = THREE.MathUtils.clamp(altitudeError * AUTOPILOT_PITCH_CORRECTION_FACTOR, -MAX_PITCH_ANGLE_RAD, MAX_PITCH_ANGLE_RAD);
+                const currentPitch = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').x;
+                pitchChange = (desiredPitch - currentPitch) * AUTOPILOT_CORRECTION_SPEED;
+
+                if (gameState.engineOn) { gameState.throttle = 0.75; }
+            } else {
+                gameState.autopilotState = AUTOPILOT_STATE.OFF;
+                document.getElementById('autopilotIndicator').style.display = 'none';
+                console.log("Автопілот: маршрут завершено, автопілот вимкнено.");
+            }
+            break;
+            
+        case AUTOPILOT_STATE.LANDING:
+            console.log("Автопілот: режим ПОСАДКА (ще не реалізовано).");
+            gameState.autopilotState = AUTOPILOT_STATE.OFF;
+            document.getElementById('autopilotIndicator').style.display = 'none';
+            break;
     }
     
     if (!gameState.engineOn && gameState.throttle > 0 && !keysPressed.engineStartInitiated) {
