@@ -302,7 +302,7 @@
       undefined, 
       () => { console.warn("Runway texture 'runway_texture.png' not found or error loading."); }
     );
-    runwayTexture.wrapS = THREE.RepeatWrapping; runwayTexture.wrapT = THREE.RepeatWrapping; runwayTexture.repeat.set(1, 5); 
+    runwayTexture.wrapS = THREE.RepeatWrapping; runwayTexture.wrapT = THREE.RepeatWrapping; runwayTexture.repeat.set(1, 2); 
     if (renderer.capabilities.getMaxAnisotropy) {
         runwayTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     }
