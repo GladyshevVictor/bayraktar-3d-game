@@ -657,13 +657,12 @@
   }
 
    function animate() {
-    requestAnimationFrame(animate);
-    const deltaTime = clock.getDelta();
-    updateSunAndSky();
-    if (mixer) mixer.update(deltaTime);
-    if(bayraktarModel) {  
-        updateGameState(deltaTime);
-        updateCamera(deltaTime);
+    requestAnimationFrame(animate);
+    const deltaTime = clock.getDelta();
+    if (mixer) mixer.update(deltaTime);
+    if(bayraktarModel) {  
+        updateGameState(deltaTime);
+        updateCamera(deltaTime);
     }
     updateHUD();
     updateFuelGauge();  
