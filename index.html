@@ -260,7 +260,7 @@
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
     
     const textureLoader = new THREE.TextureLoader();
-    const runwayTexture = textureLoader.load('Asphalt015_1K-Color.jpg', () => { console.log("Текстура асфальту завантажена."); }, undefined, () => { console.warn("Текстура 'Asphalt015_1K-Color.jpg' не знайдена."); });
+    const runwayTexture = textureLoader.load('Asphalt015_1K-Color.png', () => { console.log("Текстура асфальту завантажена."); }, undefined, () => { console.warn("Текстура 'Asphalt015_1K-Color.png' не знайдена."); });
     runwayTexture.wrapS = THREE.RepeatWrapping; 
     runwayTexture.wrapT = THREE.RepeatWrapping; 
     runwayTexture.repeat.set(15, 200);   
