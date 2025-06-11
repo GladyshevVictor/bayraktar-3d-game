@@ -285,7 +285,10 @@
     
     orbitControls = new OrbitControls(camera, renderer.domElement);
     orbitControls.enableDamping = true; orbitControls.dampingFactor = 0.1; orbitControls.enabled = false;  
-    orbitControls.minDistance = 2; orbitControls.maxDistance = 400;  
+    orbitControls.minDistance = 2; orbitControls.maxDistance = 400; 
+    // VVVVVV ВСТАВТЕ НОВИЙ РЯДОК ОСЬ ТУТ VVVVVV
+    orbitControls.maxPolarAngle = Math.PI / 2 - 0.05;
+    // ^^^^^^ КІНЕЦЬ НОВОГО РЯДКА ^^^^^^
     
     fuelNeedle = document.getElementById('fuelNeedle');
     fuelValueDigital = document.getElementById('fuelValueDigital');
