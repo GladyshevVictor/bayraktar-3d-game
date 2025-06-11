@@ -679,22 +679,28 @@
     aerodromeArrowElement.style.transform = `rotate(${angleDeg}deg)`;
   }
 
-   function animate() {
-    requestAnimationFrame(animate);
-    const deltaTime = clock.getDelta();
-    if (mixer) mixer.update(deltaTime);
-    if(bayraktarModel) {  
-        updateGameState(deltaTime);
-        updateCamera(deltaTime);
+  function updateCamera(deltaTime) { /* ... */ }
+  function updateHUD() { /* ... */ }
+  function updateFuelGauge() { /* ... */ }
+  function updateAerodromeIndicator() { /* ... */ }
+  
+  function animate() {
+    requestAnimationFrame(animate);
+    const deltaTime = clock.getDelta();
+    updateSunAndSky();
+    if (mixer) mixer.update(deltaTime);
+    if(bayraktarModel) {  
+        updateGameState(deltaTime);
+        updateCamera(deltaTime);
     }
     updateHUD();
     updateFuelGauge();  
     updateAerodromeIndicator();
-    updateWaypointLine(); // Оновлюємо лінію маршруту в кожному кадрі
-    updateWaypointHUD();  // Оновлюємо HUD маршруту
+    updateWaypointLine(); 
+    updateWaypointHUD();  
     renderer.render(scene, camera);
   }
-
+  
   init();  
 </script>
 </body>
