@@ -11,10 +11,8 @@
     #dashboard { position: absolute; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.7); color: white; font-family: Arial, sans-serif; font-size: 12px; padding: 10px 15px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; width: 230px; }
     #dashboard div:not(#fuelGaugeContainer):not(#fuelGauge) { display: flex; justify-content: space-between; } 
     #dashboard span { text-align: right; }
-    canvas#hudCanvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
     .key-info { position: absolute; top: 10px; right: 10px; color: white; font-family: Arial, sans-serif; font-size: 12px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px;}
     #autopilotIndicator { color: #00ff00; font-weight: bold; }
-    #cameraModeIndicator { }
     #aerodromeIndicator { color: #00ff00; }
     #aerodromeArrow { display: inline-block; transform-origin: center center; font-weight: bold; margin-right: 5px; }
     #waypointIndicator { color: #00ffff; margin-top: 5px;}
@@ -180,9 +178,12 @@
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
         const distance = Math.round(bayraktarModel.position.distanceTo(target));
-        nextWaypointInfoElement.textContent = `Точка <span class="math-inline">\{currentWaypointIndex \+ 1\} \(</span>{distance} м)`;
+        nextWaypointInfoElement.textContent = `Точка ${currentWaypointIndex + 1} (${distance} м)`;
     } else if (currentWaypointIndex >= waypointCoordinates.length) {
-        if (gameState.autopilotOn) gameState.autopilotOn = false; // Вимикаємо автопілот в кінці маршруту
+        if (gameState.autopilotOn) {
+            gameState.autopilotOn = false; // Вимикаємо автопілот в кінці маршруту
+            document.getElementById('autopilotIndicator').style.display = 'none';
+        }
         nextWaypointInfoElement.textContent = "Маршрут завершено!";
     } else { nextWaypointInfoElement.textContent = "--"; }
   }
@@ -259,7 +260,7 @@
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
     
     const textureLoader = new THREE.TextureLoader();
-    const runwayTexture = textureLoader.load('Asphalt015_1K-Color.jpg', () => { console.log("Текстура асфальту завантажена."); }, undefined, () => { console.warn("Текстура 'Asphalt015_1K-Color.jpg' не знайдена."); });
+    const runwayTexture = textureLoader.load('Asphalt015_1K-Color.png', () => { console.log("Текстура асфальту завантажена."); }, undefined, () => { console.warn("Текстура 'Asphalt015_1K-Color.png' не знайдена."); });
     runwayTexture.wrapS = THREE.RepeatWrapping; 
     runwayTexture.wrapT = THREE.RepeatWrapping; 
     runwayTexture.repeat.set(15, 200);   
@@ -399,7 +400,6 @@
         }
     }
     
-    // --- ЗАСТОСУВАННЯ ЗМІН ТА ОБМЕЖЕНЬ ---
     if (!gameState.engineOn && gameState.throttle > 0 && !keysPressed.engineStartInitiated) {
         gameState.throttle = 0;
     }
@@ -418,9 +418,17 @@
     if (currentRoll > MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = MAX_ROLL_ANGLE_RAD;
     else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
 
-    // ... (решта коду updateGameState: пропелер, фізика, HUD і т.д. без змін) ...
     const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
-    if (propellerMesh) { /* ... */ }
+    if (propellerMesh) {
+        if (gameState.engineOn && gameState.rpm > 0) {
+            const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI;  
+            propellerMesh.rotateY(rotationSpeedRPM * deltaTime);  
+        } else if (!gameState.engineOn && initialPropellerQuaternion) {
+            if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) {
+                 propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
+            } else { propellerMesh.quaternion.copy(initialPropellerQuaternion); }
+        }
+    }
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0);  
     let drag = dragFactor * gameState.speed * gameState.speed;
     let currentBrakingForceApplied = 0;
@@ -473,7 +481,15 @@
             else if (gameState.altitude <= onGroundThreshold) { gameState.vSpeed = 0; }
         } gameState.altitude = bayraktarModel.position.y;  
     }
-    if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) { /* ... */ }
+    if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) {
+        const currentTargetPosition = waypointCoordinates[currentWaypointIndex];
+        if (bayraktarModel.position.distanceTo(currentTargetPosition) < WAYPOINT_REACH_THRESHOLD) {
+            console.log(`Пройдено маршрутну точку ${currentWaypointIndex + 1}!`);
+            currentWaypointIndex++;
+            if (currentWaypointIndex >= waypointCoordinates.length) { console.log("Маршрут завершено!"); }
+            createWaypointVisuals(); 
+        }
+    }
     if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; gameState.fuel = Math.max(0, gameState.fuel); if (gameState.fuel === 0) { engineSound.pause(); engineSound.currentTime = 0; gameState.engineOn = false; gameState.throttle = 0; console.log("Пальне закінчилося. Двигун вимкнено."); } }
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
     if (engineSound && gameState.engineOn) { if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); engineSound.volume = Math.max(0.1, gameState.throttle * 0.5); }  
