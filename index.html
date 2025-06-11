@@ -112,7 +112,7 @@
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
   const aerodromePosition = new THREE.Vector3(0, 0, 0);  
-  
+
   const AUTOPILOT_STATE = { OFF: 0, TAKEOFF: 1, NAVIGATE: 2, LANDING: 3 };
   
   const gameState = { 
@@ -202,7 +202,7 @@
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
         const distance = Math.round(bayraktarModel.position.distanceTo(target));
-        nextWaypointInfoElement.textContent = `Точка <span class="math-inline">\{currentWaypointIndex \+ 1\} \(</span>{distance} м)`;
+        nextWaypointInfoElement.textContent = `Точка ${currentWaypointIndex + 1} (${distance} м)`;
     } else if (currentWaypointIndex >= waypointCoordinates.length) {
         if (gameState.autopilotState !== AUTOPILOT_STATE.OFF) {
             gameState.autopilotState = AUTOPILOT_STATE.OFF; 
@@ -356,7 +356,7 @@
     const groundPitchSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.4; 
     const rotationSpeedInput = 1.5 * deltaTime;  
 
-    // --- Логіка Керування Двигуном (Тап/Утримання) ---
+    // Логіка Керування Двигуном (Тап/Утримання)
     if (keysPressed['KeyR'] || keysPressed['к']) {
         gameState.rKeyHoldTime += deltaTime;
         if (gameState.engineOn && gameState.rKeyHoldTime >= R_KEY_HOLD_TO_STOP_DURATION) {
@@ -372,9 +372,7 @@
                     gameState.engineOn = true;
                     if (startSound) startSound.play();
                     console.log("Двигун запущено.");
-                } else {
-                    console.log("Немає пального.");
-                }
+                } else { console.log("Немає пального."); }
             }
         }
         gameState.rKeyHoldTime = 0;
@@ -386,8 +384,7 @@
 
     switch (gameState.autopilotState) {
         case AUTOPILOT_STATE.OFF:
-            // --- ЛОГІКА РУЧНОГО КЕРУВАННЯ ---
-            const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
+            const playerIsPitchingUpManual = keysPressed['KeyS'] || keysPressed['і'];
             if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {  
                 if (keysPressed['KeyW'] || keysPressed['ц']) { pitchChange = rotationSpeedInput; } 
                 if (keysPressed['KeyS'] || keysPressed['і']) { pitchChange = -rotationSpeedInput; }  
@@ -401,11 +398,9 @@
                     if (bayraktarModel.rotation.x < MAX_PITCH_ANGLE_RAD * 0.3) { pitchChange = rotationSpeedInput * 0.2; } 
                 } else { pitchChange = 0; }
             }
-            
             const yawEffectiveness = (gameState.altitude > 0.1) ? 1.0 : 0.6;
             if (keysPressed['KeyQ'] || keysPressed['й']) { yawChange = rotationSpeedInput * yawEffectiveness; } 
             if (keysPressed['KeyE'] || keysPressed['у']) { yawChange = -rotationSpeedInput * yawEffectiveness; }
-            
             if (gameState.engineOn) {
                 if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 1.0 * deltaTime);
                 if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 1.0 * deltaTime);
@@ -415,20 +410,16 @@
         case AUTOPILOT_STATE.TAKEOFF:
             const indicatorTakeoff = document.getElementById('autopilotIndicator');
             if (indicatorTakeoff.textContent !== 'АВТОПІЛОТ: ЗЛІТ') indicatorTakeoff.textContent = 'АВТОПІЛОТ: ЗЛІТ';
-
             if (gameState.engineOn) { gameState.throttle = 1.0; }
-
             let takeoffHeadingError = (360 - gameState.heading) % 360;
             if (takeoffHeadingError > 180) takeoffHeadingError -= 360;
             yawChange = THREE.MathUtils.degToRad(takeoffHeadingError) * 0.5;
-            rollChange = -bayraktarModel.rotation.z * 0.5; // Активне вирівнювання крену
-
+            rollChange = -bayraktarModel.rotation.z * 0.5; 
             if (gameState.speed > NORMAL_TAKEOFF_SPEED_MPS) {
-                const takeoffPitch = THREE.MathUtils.degToRad(-7); // Ніс вгору (у вашій оригінальній системі S = мінус)
+                const takeoffPitch = THREE.MathUtils.degToRad(-7); 
                 const currentPitchTakeoff = bayraktarModel.rotation.x;
                 pitchChange = (takeoffPitch - currentPitchTakeoff) * AUTOPILOT_CORRECTION_SPEED;
             }
-
             if (gameState.altitude > 30) {
                 console.log("Автопілот: зліт завершено, перехід в режим НАВІГАЦІЯ.");
                 gameState.autopilotState = AUTOPILOT_STATE.NAVIGATE;
@@ -438,7 +429,6 @@
         case AUTOPILOT_STATE.NAVIGATE:
             const indicatorNav = document.getElementById('autopilotIndicator');
             if (indicatorNav.textContent !== 'АВТОПІЛОТ: НАВІГАЦІЯ') indicatorNav.textContent = 'АВТОПІЛОТ: НАВІГАЦІЯ';
-
             if (currentWaypointIndex < waypointCoordinates.length) {
                 const targetPosition = waypointCoordinates[currentWaypointIndex];
                 const dirToTarget = new THREE.Vector3().subVectors(targetPosition, bayraktarModel.position);
@@ -448,16 +438,13 @@
                 let headingErrorNav = forwardDir.angleTo(dirToTarget);
                 const cross = new THREE.Vector3().crossVectors(forwardDir, dirToTarget);
                 if (cross.y < 0) { headingErrorNav = -headingErrorNav; }
-
                 const desiredRoll = THREE.MathUtils.clamp(headingErrorNav * AUTOPILOT_TURN_SENSITIVITY, -AUTOPILOT_MAX_BANK_ANGLE_RAD, AUTOPILOT_MAX_BANK_ANGLE_RAD);
-                const currentRoll = bayraktarModel.rotation.z; // Використовуємо .z, як в блоці обмежень
+                const currentRoll = bayraktarModel.rotation.z;
                 rollChange = (desiredRoll - currentRoll) * AUTOPILOT_CORRECTION_SPEED;
-
                 const altitudeError = targetPosition.y - gameState.altitude;
                 const desiredPitch = THREE.MathUtils.clamp(altitudeError * AUTOPILOT_PITCH_CORRECTION_FACTOR, -MAX_PITCH_ANGLE_RAD, MAX_PITCH_ANGLE_RAD);
-                const currentPitch = bayraktarModel.rotation.x; // Використовуємо .x
+                const currentPitch = bayraktarModel.rotation.x;
                 pitchChange = (desiredPitch - currentPitch) * AUTOPILOT_CORRECTION_SPEED;
-
                 if (gameState.engineOn) { gameState.throttle = 0.75; }
             } else {
                 gameState.autopilotState = AUTOPILOT_STATE.OFF;
@@ -473,9 +460,7 @@
             break;
     }
     
-    if (!gameState.engineOn && gameState.throttle > 0) {
-        gameState.throttle = 0;
-    }
+    if (!gameState.engineOn && gameState.throttle > 0 && !keysPressed.engineStartInitiated) { gameState.throttle = 0; }
     
     bayraktarModel.rotateX(pitchChange); 
     bayraktarModel.rotateZ(rollChange); 
@@ -490,7 +475,7 @@
     else if (currentPitch < -MAX_PITCH_ANGLE_RAD) bayraktarModel.rotation.x = -MAX_PITCH_ANGLE_RAD;
     if (currentRoll > MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = MAX_ROLL_ANGLE_RAD;
     else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
-
+    
     if (propellerMesh) {
         if (gameState.engineOn && gameState.rpm > 0) {
             const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI;  
