@@ -76,7 +76,7 @@
     Space: Гальма (земля) / Ракета (повітря)<br> 
     C (С): Змінити камеру<br> 
     6: Допом. зліт (60+ вузлів)<br>
-    R (К): Запуск / Зупинка двигуна (утрим. для зупинки)<br>
+    R (К): Запуск (тап) / Зупинка (утрим.)<br>
     P (З): Автопілот (Увімк./Вимк.)
 </div>
 <audio id="engineSound" src="diesel-drive-by-3-mz000007-47135.mp3" loop></audio>
@@ -126,12 +126,7 @@
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
   const aerodromePosition = new THREE.Vector3(0, 0, 0);  
 
-  const AUTOPILOT_STATE = {
-    OFF: 0,
-    TAKEOFF: 1,
-    NAVIGATE: 2,
-    LANDING: 3,
-  };
+  const AUTOPILOT_STATE = { OFF: 0, TAKEOFF: 1, NAVIGATE: 2, LANDING: 3 };
   
   const gameState = { 
       fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, 
@@ -220,7 +215,7 @@
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
         const distance = Math.round(bayraktarModel.position.distanceTo(target));
-        nextWaypointInfoElement.textContent = `Точка <span class="math-inline">\{currentWaypointIndex \+ 1\} \(</span>{distance} м)`;
+        nextWaypointInfoElement.textContent = `Точка ${currentWaypointIndex + 1} (${distance} м)`;
     } else if (currentWaypointIndex >= waypointCoordinates.length) {
         if (gameState.autopilotState !== AUTOPILOT_STATE.OFF) {
             gameState.autopilotState = AUTOPILOT_STATE.OFF; 
@@ -241,14 +236,6 @@
             currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
             updateCameraModeIndicator();
             if (orbitControls) { orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT); }
-        }
-        if ((event.code === 'KeyR' || event.key.toLowerCase() === 'к') && !gameState.engineOn && !keysPressed.engineStartInitiated) { 
-            keysPressed.engineStartInitiated = true; 
-            if (startSound) startSound.play().catch(e => console.warn("Не вдалося відтворити звук запуску", e));
-            setTimeout(() => {
-                if (gameState.fuel > 0) { gameState.engineOn = true; console.log("Двигун запущено"); } 
-                else { console.log("Немає пального для запуску двигуна."); }
-            }, 500); 
         }
         if (event.code === 'KeyP' || event.key.toLowerCase() === 'з') {
             const indicator = document.getElementById('autopilotIndicator');
@@ -272,10 +259,6 @@
     });
     document.addEventListener('keyup', (event) => {
         keysPressed[event.code] = false; keysPressed[event.key.toLowerCase()] = false;
-        if (event.code === 'KeyR' || event.key.toLowerCase() === 'к') { 
-            keysPressed.engineStartInitiated = false; 
-            gameState.rKeyHoldTime = 0; 
-        }
         if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
             console.log("Запуск ракети!");
             if (missileSound) { missileSound.currentTime = 0; missileSound.play().catch(e => console.warn("Не вдалося відтворити звук ракети", e)); }
@@ -289,13 +272,11 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
     });
-    keysPressed.engineStartInitiated = false; 
-   }
+  }
 
   function init() {
     clock = new THREE.Clock();
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB);  
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -319,7 +300,7 @@
     nextWaypointInfoElement = document.getElementById('nextWaypointInfo');
     
     const textureLoader = new THREE.TextureLoader();
-    const runwayTexture = textureLoader.load('Asphalt1Color.png', () => { console.log("Текстура асфальту завантажена."); }, undefined, () => { console.warn("Текстура 'Asphalt1Color.png' не знайдена."); });
+    const runwayTexture = textureLoader.load('Asphalt015Color.png', () => { console.log("Текстура асфальту завантажена."); }, undefined, () => { console.warn("Текстура 'Asphalt015Color.png' не знайдена."); });
     runwayTexture.wrapS = THREE.RepeatWrapping; 
     runwayTexture.wrapT = THREE.RepeatWrapping; 
     runwayTexture.repeat.set(15, 200);   
@@ -388,20 +369,26 @@
     const rotationSpeedInput = 1.5 * deltaTime;  
 
     if (keysPressed['KeyR'] || keysPressed['к']) {
-        if (gameState.engineOn && !keysPressed.engineStartInitiated) { 
-            gameState.rKeyHoldTime += deltaTime;
-            if (gameState.rKeyHoldTime >= R_KEY_HOLD_TO_STOP_DURATION) {
-                gameState.engineOn = false;
-                gameState.throttle = 0; 
-                if (engineSound) engineSound.pause();
-                console.log("Двигун зупинено утриманням R/К");
-                gameState.rKeyHoldTime = 0;
-            }
+        gameState.rKeyHoldTime += deltaTime;
+        if (gameState.engineOn && gameState.rKeyHoldTime >= R_KEY_HOLD_TO_STOP_DURATION) {
+            gameState.engineOn = false;
+            gameState.throttle = 0; 
+            if (engineSound) engineSound.pause();
+            console.log("Двигун зупинено утриманням R/К");
         }
     } else {
-        if (gameState.rKeyHoldTime > 0) { 
-            gameState.rKeyHoldTime = 0; 
+        if (gameState.rKeyHoldTime > 0 && gameState.rKeyHoldTime < R_KEY_HOLD_TO_STOP_DURATION) {
+            if (!gameState.engineOn) {
+                if (gameState.fuel > 0) {
+                    gameState.engineOn = true;
+                    if (startSound) startSound.play();
+                    console.log("Двигун запущено.");
+                } else {
+                    console.log("Немає пального.");
+                }
+            }
         }
+        gameState.rKeyHoldTime = 0;
     }
 
     let pitchChange = 0; 
@@ -410,7 +397,6 @@
 
     switch (gameState.autopilotState) {
         case AUTOPILOT_STATE.OFF:
-            // --- ЛОГІКА РУЧНОГО КЕРУВАННЯ ---
             const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
             if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {  
                 if (keysPressed['KeyW'] || keysPressed['ц']) { pitchChange = rotationSpeedInput; } 
@@ -440,9 +426,7 @@
             const indicatorTakeoff = document.getElementById('autopilotIndicator');
             if (indicatorTakeoff.textContent !== 'АВТОПІЛОТ: ЗЛІТ') indicatorTakeoff.textContent = 'АВТОПІЛОТ: ЗЛІТ';
 
-            if (gameState.engineOn) {
-                gameState.throttle = 1.0;
-            }
+            if (gameState.engineOn) { gameState.throttle = 1.0; }
 
             let takeoffHeadingError = (0 - gameState.heading + 360) % 360;
             if (takeoffHeadingError > 180) takeoffHeadingError -= 360;
@@ -462,7 +446,7 @@
             break;
 
         case AUTOPILOT_STATE.NAVIGATE:
-             const indicatorNav = document.getElementById('autopilotIndicator');
+            const indicatorNav = document.getElementById('autopilotIndicator');
             if (indicatorNav.textContent !== 'АВТОПІЛОТ: НАВІГАЦІЯ') indicatorNav.textContent = 'АВТОПІЛОТ: НАВІГАЦІЯ';
 
             if (currentWaypointIndex < waypointCoordinates.length) {
@@ -518,16 +502,7 @@
     else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
 
     const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
-    if (propellerMesh) {
-        if (gameState.engineOn && gameState.rpm > 0) {
-            const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI;  
-            propellerMesh.rotateY(rotationSpeedRPM * deltaTime);  
-        } else if (!gameState.engineOn && initialPropellerQuaternion) {
-            if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) {
-                 propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
-            } else { propellerMesh.quaternion.copy(initialPropellerQuaternion); }
-        }
-    }
+    if (propellerMesh) { /* ... */ }
     let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0);  
     let drag = dragFactor * gameState.speed * gameState.speed;
     let currentBrakingForceApplied = 0;
