@@ -647,7 +647,25 @@
       orbitControls.update(deltaTime);
       break;
   }
-  function updateHUD() { /* ... */ }
+  function updateHUD(){
+  const altitudeEl = document.getElementById('altitude'); 
+  if (altitudeEl) altitudeEl.textContent = gameState.altitude.toFixed(0) + ' м';
+  const pitchEl = document.getElementById('pitch'); 
+  if (pitchEl) pitchEl.textContent = gameState.pitch.toFixed(1) + '°';
+  const rollEl = document.getElementById('roll'); 
+  if (rollEl) rollEl.textContent = gameState.roll.toFixed(1) + '°';
+  const speedEl = document.getElementById('speed'); 
+  if (speedEl) speedEl.textContent = (gameState.speed * 3.6).toFixed(0) + ' км/год';
+  const headingEl = document.getElementById('heading'); 
+  if (headingEl) headingEl.textContent = gameState.heading.toFixed(0) + '°';
+  const vspeedEl = document.getElementById('vspeed'); 
+  if (vspeedEl) vspeedEl.textContent = (gameState.vSpeed * 60).toFixed(0) + ' м/хв';
+  const throttleEl = document.getElementById('throttle'); 
+  if (throttleEl) throttleEl.textContent = (gameState.throttle * 100).toFixed(0) + '%';
+  const rpmEl = document.getElementById('rpm'); 
+  if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
+  const scoreEl = document.getElementById('score'); 
+  if (scoreEl) scoreEl.textContent = gameState.score;
   function updateFuelGauge() { /* ... */ }
   function updateAerodromeIndicator() { /* ... */ }
   
