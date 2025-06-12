@@ -169,6 +169,10 @@
     const hours = now.getHours() + now.getMinutes() / 60;
     const sunAngle = (hours / 12 - 0.5) * Math.PI;
     const sunDistance = 4000;
+    const sunYPosition = sunDistance * Math.sin(sunAngle); // Визначимо раніше для логування
+  // VVVVVV ДОДАЙТЕ ЦЕЙ РЯДОК ДЛЯ ДІАГНОСТИКИ VVVVVV
+  console.log(`Час: ${now.toLocaleTimeString()}, Години: ${hours.toFixed(2)}, Кут сонця: ${sunAngle.toFixed(2)}, Y-позиція: ${sunYPosition.toFixed(2)}`);
+  // ^^^^^^ КІНЕЦЬ РЯДКА ДЛЯ ДІАГНОСТИКИ ^^^^^^
     directionalLight.position.x = sunDistance * Math.cos(sunAngle);
     directionalLight.position.y = sunDistance * Math.sin(sunAngle);
     directionalLight.position.z = 1000;
