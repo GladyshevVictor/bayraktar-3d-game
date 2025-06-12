@@ -652,21 +652,21 @@
   function updateAerodromeIndicator() { /* ... */ }
   
   function animate() {
-    requestAnimationFrame(animate);
-    const deltaTime = clock.getDelta();
-    updateSunAndSky();
-    if (mixer) mixer.update(deltaTime);
-    if(bayraktarModel) {  
-        updateGameState(deltaTime);
-        updateCamera(deltaTime);
-    }
-    updateHUD();
-    updateFuelGauge();  
-    updateAerodromeIndicator();
-    updateWaypointLine(); 
-    updateWaypointHUD();  
-    renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+  const deltaTime = clock.getDelta();
+  updateSunAndSky();
+  if (mixer) mixer.update(deltaTime);
+  if(bayraktarModel) {  
+      updateGameState(deltaTime);
+      updateCamera(deltaTime); // <--- Ось тут має бути виклик
   }
+  updateHUD();
+  updateFuelGauge();  
+  updateAerodromeIndicator();
+  updateWaypointLine(); 
+  updateWaypointHUD();  
+  renderer.render(scene, camera);
+}
   
   init();  
 </script>
