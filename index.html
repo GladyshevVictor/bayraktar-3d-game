@@ -228,7 +228,7 @@
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
         const distance = Math.round(bayraktarModel.position.distanceTo(target));
-        nextWaypointInfoElement.textContent = `Точка ${currentWaypointIndex + 1} (${distance} м)`;
+        nextWaypointInfoElement.textContent = `Точка <span class="math-inline">\{currentWaypointIndex \+ 1\} \(</span>{distance} м)`;
     } else if (currentWaypointIndex >= waypointCoordinates.length) {
         if (gameState.autopilotState !== AUTOPILOT_STATE.OFF) {
             gameState.autopilotState = AUTOPILOT_STATE.OFF; 
@@ -412,19 +412,12 @@
 
     switch (gameState.autopilotState) {
         case AUTOPILOT_STATE.OFF:
+            const playerIsPitchingUpManual = keysPressed['KeyS'] || keysPressed['і'];
             if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {  
-                const currentPitchRad = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').x;
-                const currentRollRad = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').z;
-                if (keysPressed['KeyW'] || keysPressed['ц']) { 
-                    if(currentPitchRad > -MAX_PITCH_ANGLE_RAD) pitchChange = -rotationSpeedInput; 
-                } else if (keysPressed['KeyS'] || keysPressed['і']) {
-                    if(currentPitchRad < MAX_PITCH_ANGLE_RAD) pitchChange = rotationSpeedInput;
-                }
-                if (keysPressed['KeyA'] || keysPressed['ф']) {
-                    if(currentRollRad > -MAX_ROLL_ANGLE_RAD) rollChange = -rotationSpeedInput;
-                } else if (keysPressed['KeyD'] || keysPressed['в']) {
-                    if(currentRollRad < MAX_ROLL_ANGLE_RAD) rollChange = rotationSpeedInput;
-                }
+                if (keysPressed['KeyW'] || keysPressed['ц']) { pitchChange = rotationSpeedInput; } 
+                if (keysPressed['KeyS'] || keysPressed['і']) { pitchChange = -rotationSpeedInput; }  
+                if (keysPressed['KeyA'] || keysPressed['ф']) { rollChange = rotationSpeedInput; } 
+                if (keysPressed['KeyD'] || keysPressed['в']) { rollChange = -rotationSpeedInput; }    
             } else {
                 rollChange = 0;  
                 if ((keysPressed['KeyS'] || keysPressed['і']) && gameState.speed > groundPitchSpeedThreshold) { 
@@ -452,9 +445,9 @@
             const currentRollRadTakeoff = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').z;
             rollChange = -currentRollRadTakeoff * 0.5; 
             if (gameState.speed > NORMAL_TAKEOFF_SPEED_MPS) {
-                const takeoffPitch = THREE.MathUtils.degToRad(7); 
-                const currentPitchRadTakeoff = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').x;
-                pitchChange = (takeoffPitch - currentPitchRadTakeoff) * AUTOPILOT_CORRECTION_SPEED;
+                const takeoffPitch = THREE.MathUtils.degToRad(-7); 
+                const currentPitchTakeoff = bayraktarModel.rotation.x;
+                pitchChange = (takeoffPitch - currentPitchTakeoff) * AUTOPILOT_CORRECTION_SPEED;
             }
             if (gameState.altitude > 30) {
                 console.log("Автопілот: зліт завершено, перехід в режим НАВІГАЦІЯ.");
