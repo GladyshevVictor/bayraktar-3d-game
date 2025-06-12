@@ -157,30 +157,19 @@
 
   function updateSunAndSky() {
     if (!directionalLight || !ambientLight || !scene) return;
-    
     const now = new Date();
     const hours = now.getHours() + now.getMinutes() / 60;
     const sunAngle = (hours / 12 - 0.5) * Math.PI;
     const sunDistance = 4000;
-    const sunYPosition = sunDistance * Math.sin(sunAngle);
-
-    // ================================================================
-    // === ДІАГНОСТИЧНИЙ РЯДОК ===
-    // ================================================================
-    console.log(`Час: ${now.toLocaleTimeString()}, Години: ${hours.toFixed(2)}, Кут сонця: ${sunAngle.toFixed(2)}, Y-позиція: ${sunYPosition.toFixed(2)}`);
-
     directionalLight.position.x = sunDistance * Math.cos(sunAngle);
-    directionalLight.position.y = sunYPosition;
+    directionalLight.position.y = sunDistance * Math.sin(sunAngle);
     directionalLight.position.z = 1000;
-    
     const isDay = directionalLight.position.y > 0;
     directionalLight.intensity = isDay ? 1.5 : 0;
     ambientLight.intensity = isDay ? 0.6 : 0.1;
-
     const daySkyColor = new THREE.Color(0x87CEEB);
     const nightSkyColor = new THREE.Color(0x000020);
     const sunriseSunsetColor = new THREE.Color(0xFF8C00);
-
     if (isDay) {
         const sunriseFactor = Math.sin(sunAngle);
         const dynamicDayColor = daySkyColor.clone().lerp(sunriseSunsetColor, 1 - Math.pow(sunriseFactor, 0.5));
@@ -189,7 +178,6 @@
         scene.background.copy(nightSkyColor);
     }
     document.body.style.backgroundColor = `#${scene.background.getHexString()}`;
-
     if (stars) {
         const nightFactor = 1 - Math.max(0, Math.sin(sunAngle));
         stars.material.opacity = Math.pow(nightFactor, 3);
