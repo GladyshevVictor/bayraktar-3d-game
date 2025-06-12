@@ -228,7 +228,7 @@
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
         const distance = Math.round(bayraktarModel.position.distanceTo(target));
-        nextWaypointInfoElement.textContent = `Точка <span class="math-inline">\{currentWaypointIndex \+ 1\} \(</span>{distance} м)`;
+        nextWaypointInfoElement.textContent = `Наступна точка: ${currentWaypointIndex + 1} (${distance} м)`;
     } else if (currentWaypointIndex >= waypointCoordinates.length) {
         if (gameState.autopilotState !== AUTOPILOT_STATE.OFF) {
             gameState.autopilotState = AUTOPILOT_STATE.OFF; 
