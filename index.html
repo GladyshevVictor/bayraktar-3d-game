@@ -156,28 +156,35 @@
   }
 
   function updateSunAndSky() {
-    if (!directionalLight || !ambientLight || !scene) return;
+   if (!directionalLight || !ambientLight || !scene) return;
     const now = new Date();
     const hours = now.getHours() + now.getMinutes() / 60;
+    // Формула для кута сонця: 6 ранку = 0 (схід), 12 дня = PI/2 (зеніт), 18 вечора = PI (захід)
     const sunAngle = (hours / 12 - 0.5) * Math.PI;
     const sunDistance = 4000;
     directionalLight.position.x = sunDistance * Math.cos(sunAngle);
     directionalLight.position.y = sunDistance * Math.sin(sunAngle);
-    directionalLight.position.z = 1000;
+    directionalLight.position.z = 1000; // Невелике зміщення для кращих тіней
+    // Визначаємо, чи зараз день, за позицією сонця (чи воно над горизонтом)
     const isDay = directionalLight.position.y > 0;
-    directionalLight.intensity = isDay ? 1.5 : 0;
-    ambientLight.intensity = isDay ? 0.6 : 0.1;
+    directionalLight.intensity = isDay ? 1.5 : 0; // Сонце світить тільки вдень
+    ambientLight.intensity = isDay ? 0.6 : 0.1;   // Вночі залишаємо слабке розсіяне світло
     const daySkyColor = new THREE.Color(0x87CEEB);
-    const nightSkyColor = new THREE.Color(0x000020);
-    const sunriseSunsetColor = new THREE.Color(0xFF8C00);
+    const nightSkyColor = new THREE.Color(0x000020); // Темно-синій для ночі
+    const sunriseSunsetColor = new THREE.Color(0xFF8C00); // Помаранчевий для сходу/заходу
     if (isDay) {
+        // Розраховуємо фактор для сходу/заходу сонця (0 = на горизонті, 1 = в зеніті)
         const sunriseFactor = Math.sin(sunAngle);
+        // Створюємо градієнт між денним та помаранчевим кольором
         const dynamicDayColor = daySkyColor.clone().lerp(sunriseSunsetColor, 1 - Math.pow(sunriseFactor, 0.5));
         scene.background.copy(dynamicDayColor);
     } else {
         scene.background.copy(nightSkyColor);
     }
+    // Оновлюємо фон сторінки, щоб уникнути чорних смуг по краях
     document.body.style.backgroundColor = `#${scene.background.getHexString()}`;
+
+    // Також оновлюємо видимість зірок
     if (stars) {
         const nightFactor = 1 - Math.max(0, Math.sin(sunAngle));
         stars.material.opacity = Math.pow(nightFactor, 3);
