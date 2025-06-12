@@ -666,7 +666,20 @@
   if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
   const scoreEl = document.getElementById('score'); 
   if (scoreEl) scoreEl.textContent = gameState.score;
-  function updateFuelGauge() { /* ... */ }
+  function updateFuelGauge() {
+  if (!fuelNeedle || !fuelValueDigital) return;  
+  const currentFuelLiters = (gameState.fuel / 100) * MAX_FUEL_LITERS;  
+  fuelValueDigital.textContent = currentFuelLiters.toFixed(1) + ' lt';
+  const normalizedFuel = Math.max(0, Math.min(currentFuelLiters / MAX_FUEL_LITERS, 1));
+  const angle = (normalizedFuel * 180) - 90;  
+  fuelNeedle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+  if (normalizedFuel < 0.125) { 
+    fuelValueDigital.style.color = '#ff4500'; 
+  } else if (normalizedFuel < 0.25) { 
+    fuelValueDigital.style.color = '#ffd700';
+  } else { 
+    fuelValueDigital.style.color = 'white'; 
+  }
   function updateAerodromeIndicator() { /* ... */ }
   
   function animate() {
