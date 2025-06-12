@@ -228,7 +228,7 @@
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
         const distance = Math.round(bayraktarModel.position.distanceTo(target));
-        nextWaypointInfoElement.textContent = `Точка <span class="math-inline">\{currentWaypointIndex \+ 1\} \(</span>{distance} м)`;
+        nextWaypointInfoElement.textContent = `Точка ${currentWaypointIndex + 1} (${distance} м)`;
     } else if (currentWaypointIndex >= waypointCoordinates.length) {
         if (gameState.autopilotState !== AUTOPILOT_STATE.OFF) {
             gameState.autopilotState = AUTOPILOT_STATE.OFF; 
@@ -385,7 +385,6 @@
     const groundPitchSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.4; 
     const rotationSpeedInput = 1.5 * deltaTime;  
 
-    // Логіка Керування Двигуном (Тап/Утримання)
     if (keysPressed['KeyR'] || keysPressed['к']) {
         gameState.rKeyHoldTime += deltaTime;
         if (gameState.engineOn && gameState.rKeyHoldTime >= R_KEY_HOLD_TO_STOP_DURATION) {
@@ -657,8 +656,7 @@
     aerodromeDistanceElement.textContent = Math.round(distance) + ' м';
     const dirToAerodromeWorld = new THREE.Vector3().subVectors(aerodromePosition, bayraktarModel.position);
     dirToAerodromeWorld.y = 0; dirToAerodromeWorld.normalize();
-    const aircraftForwardWorld = new THREE.Vector3(0, 0, 1);  
-    aircraftForwardWorld.applyQuaternion(bayraktarModel.quaternion);
+    const aircraftForwardWorld = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
     aircraftForwardWorld.y = 0; aircraftForwardWorld.normalize();
     if (dirToAerodromeWorld.lengthSq() === 0 || aircraftForwardWorld.lengthSq() === 0) {  
         aerodromeArrowElement.style.transform = 'rotate(0deg)';
