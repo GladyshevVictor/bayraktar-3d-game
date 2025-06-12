@@ -603,7 +603,50 @@
     gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
   }
   
-  function updateCamera(deltaTime) { /* ... */ }
+  function updateCamera(deltaTime) 
+   {
+  if (!bayraktarModel) { return; }
+  switch (currentCameraMode) {
+    case CAMERA_MODES.FOLLOW:
+      orbitControls.enabled = false; 
+      if (bayraktarModel.visible === false) bayraktarModel.visible = true;
+      
+      let desiredFollowPos = followCameraOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+      const minCameraHeightAboveGround = 2.5;  
+      if (desiredFollowPos.y < minCameraHeightAboveGround) { 
+        desiredFollowPos.y = minCameraHeightAboveGround; 
+      }
+      camera.position.lerp(desiredFollowPos, 0.1);  
+      
+      let lookAtTargetForFollowCorrected = bayraktarModel.position.clone().add(new THREE.Vector3(0,1,0));
+      if (lookAtTargetForFollowCorrected.y < 0.5 && desiredFollowPos.y > lookAtTargetForFollowCorrected.y + 0.5) { 
+        lookAtTargetForFollowCorrected.y = Math.max(0.2, desiredFollowPos.y - 1.0); 
+      } else if (lookAtTargetForFollowCorrected.y > desiredFollowPos.y + 2.0 && desiredFollowPos.y < minCameraHeightAboveGround + 1.0) { 
+        lookAtTargetForFollowCorrected.y = desiredFollowPos.y + 1.0; 
+      }
+      camera.lookAt(lookAtTargetForFollowCorrected);
+      break;
+
+    case CAMERA_MODES.TAIL_VIEW:
+      orbitControls.enabled = false; 
+      if (bayraktarModel.visible === false) bayraktarModel.visible = true;
+      const worldCameraTailPosition = tailViewPositionOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+      camera.position.copy(worldCameraTailPosition);
+      const worldLookAtPropellerPosition = tailViewLookAtOffset.clone().applyQuaternion(bayraktarModel.quaternion).add(bayraktarModel.position);
+      camera.lookAt(worldLookAtPropellerPosition);
+      break;
+
+    case CAMERA_MODES.ORBIT:
+      orbitControls.enabled = true; 
+      if (bayraktarModel.visible === false) bayraktarModel.visible = true;
+      if (orbitControls.object.position.distanceTo(orbitControls.target) > orbitControls.maxDistance * 1.5) {
+        const offset = new THREE.Vector3().subVectors(orbitControls.object.position, orbitControls.target).normalize().multiplyScalar(orbitControls.maxDistance * 0.8);
+        orbitControls.object.position.copy(orbitControls.target).add(offset);
+      }
+      orbitControls.target.copy(bayraktarModel.position); 
+      orbitControls.update(deltaTime);
+      break;
+  }
   function updateHUD() { /* ... */ }
   function updateFuelGauge() { /* ... */ }
   function updateAerodromeIndicator() { /* ... */ }
