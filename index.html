@@ -305,12 +305,12 @@
     // === ОНОВЛЕННЯ ТЕКСТУРИ ЗЛІТНОЇ СМУГИ ===
     // ================================================================
     // Завантажуємо нову, безшовну текстуру асфальту
-    const runwayTexture = textureLoader.load('Asphalt015_1K-Color.jpg', 
+    const runwayTexture = textureLoader.load('Asphalt1Color.jpg', 
       () => { console.log("Текстура асфальту завантажена."); }, 
       undefined, 
-      () => { console.warn("Текстура 'Asphalt015_1K-Color.jpg' не знайдена або помилка завантаження."); }
+      () => { console.warn("Текстура 'Asphalt1Color.jpg' не знайдена або помилка завантаження."); }
     );
-    // Вмикаємо режим повторення
+    // Вмикаємо режим повторенн
     runwayTexture.wrapS = THREE.RepeatWrapping; 
     runwayTexture.wrapT = THREE.RepeatWrapping; 
     
