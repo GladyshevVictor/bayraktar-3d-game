@@ -386,20 +386,24 @@ function setupEventListeners() {
  function updateGameState(deltaTime) {
     if (!bayraktarModel) return;
 
-    // --- Логіка зупинки двигуна утриманням R ---
-    // Перевіряємо, чи натиснута клавіша R/К і чи працює двигун
-    if ((keysPressed['KeyR'] || keysPressed['к']) && gameState.engineOn) {
-        // Якщо так, починаємо рахувати час утримання
-        timeRHeld += deltaTime; // deltaTime - це час, що минув з попереднього кадру
+    // --- Логіка запуску/зупинки двигуна утриманням R ---
+    if (keysPressed['KeyR'] || keysPressed['к']) {
+        // Якщо клавіша R/К натиснута:
+        // Перевіряємо, чи працює двигун, щоб почати відлік часу для зупинки
+        if (gameState.engineOn) {
+            timeRHeld += deltaTime; // Накопичуємо час утримання
 
-        // Якщо клавішу утримують достатньо довго, вимикаємо двигун
-        if (timeRHeld >= timeToStopEngine) {
-            console.log(`Двигун зупинено утриманням клавіші протягом ${timeToStopEngine} сек.`);
-            gameState.engineOn = false;
-            // Тут можна додати логіку для звуку зупинки, анімації тощо.
+            // Якщо час утримання досяг порогу - вимикаємо двигун
+            if (timeRHeld >= timeToStopEngine) {
+                // gameState.engineOn = false; // Вимикаємо тільки один раз
+                if(gameState.engineOn) { // Додаткова перевірка, щоб лог не спамив
+                    console.log("Двигун зупинено утриманням.");
+                    gameState.engineOn = false;
+                }
+            }
         }
     } else {
-        // Якщо клавішу відпустили, скидаємо таймер
+        // Якщо клавіша R/К НЕ натиснута - ось ТІЛЬКИ ТОДІ скидаємо таймер.
         timeRHeld = 0;
     }
 
