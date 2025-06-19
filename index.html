@@ -152,7 +152,7 @@
       engineOn: false,
       engineState: ENGINE_STATE.OFF,
       engineTimer: 0,
-      rKeyHoldTime: 0,
+      rKeyDown: false,
       autopilotState: AUTOPILOT_STATE.OFF 
     };
   const keysPressed = {};
@@ -262,7 +262,7 @@
     if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
         const target = waypointCoordinates[currentWaypointIndex];
         const distance = Math.round(bayraktarModel.position.distanceTo(target));
-        nextWaypointInfoElement.innerHTML = `Наступна точка: <span class="math-inline">\{currentWaypointIndex \+ 1\} \(</span>{distance} м)`;
+        nextWaypointInfoElement.innerHTML = `Наступна точка: ${currentWaypointIndex + 1} (${distance} м)`;
     } else if (currentWaypointIndex >= waypointCoordinates.length) {
         if (gameState.autopilotState !== AUTOPILOT_STATE.OFF) {
             gameState.autopilotState = AUTOPILOT_STATE.OFF; 
@@ -288,7 +288,8 @@
   function setupEventListeners() {
     document.addEventListener('keydown', (event) => {
         if(event.repeat) return;
-        keysPressed[event.code] = true; keysPressed[event.key.toLowerCase()] = true; 
+        keysPressed[event.code] = true; 
+        keysPressed[event.key.toLowerCase()] = true; 
         
         if (event.code === 'KeyC') {
             cycleCameraMode();
@@ -309,11 +310,11 @@
                 gameState.autopilotState = AUTOPILOT_STATE.OFF;
                 indicator.style.display = 'none';
             }
-            console.log("Стан автопілота:", gameState.autopilotState)
         }
     });
     document.addEventListener('keyup', (event) => {
-        keysPressed[event.code] = false; keysPressed[event.key.toLowerCase()] = false;
+        keysPressed[event.code] = false; 
+        keysPressed[event.key.toLowerCase()] = false;
         if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
             console.log("Запуск ракети!");
             if (missileSound) { missileSound.currentTime = 0; missileSound.play().catch(e => console.warn("Не вдалося відтворити звук ракети", e)); }
@@ -458,8 +459,10 @@
             gameState.rKeyDown = true;
             gameState.rKeyHoldTime = 0;
             if (gameState.engineState === ENGINE_STATE.ON) {
+                console.log("Починаю зупинку двигуна (утримання)...");
                 gameState.engineState = ENGINE_STATE.STOPPING;
             } else if (gameState.engineState === ENGINE_STATE.OFF) {
+                console.log("Починаю запуск двигуна...");
                 gameState.engineState = ENGINE_STATE.STARTING;
             }
         }
@@ -467,9 +470,11 @@
     } else {
         if (gameState.rKeyDown) { 
             if (gameState.engineState === ENGINE_STATE.STARTING) {
+                console.log("Запуск скасовано.");
                 gameState.engineState = ENGINE_STATE.OFF;
             } else if (gameState.engineState === ENGINE_STATE.STOPPING) {
                 if(gameState.rKeyHoldTime < R_KEY_HOLD_TO_STOP_DURATION) {
+                    console.log("Зупинку скасовано.");
                     gameState.engineState = ENGINE_STATE.ON;
                 }
             }
@@ -480,18 +485,21 @@
 
     if(gameState.engineState === ENGINE_STATE.STARTING && gameState.rKeyHoldTime > 0.5) {
         if (gameState.fuel > 0) {
-            if(startSound) {startSound.currentTime = 0; startSound.play();}
+            console.log("Двигун запущено.");
             gameState.engineState = ENGINE_STATE.ON;
+            if (startSound) {startSound.currentTime = 0; startSound.play();}
         } else {
+            console.log("Запуск не вдався, немає пального.");
             gameState.engineState = ENGINE_STATE.OFF;
         }
     }
     if(gameState.engineState === ENGINE_STATE.STOPPING && gameState.rKeyHoldTime > R_KEY_HOLD_TO_STOP_DURATION) {
+        console.log("Двигун зупинено.");
         gameState.engineState = ENGINE_STATE.OFF;
     }
     
-    gameState.engineOn = (gameState.engineState === ENGINE_STATE.ON);
-    if (!gameState.engineOn) { 
+    gameState.engineOn = (gameState.engineState === ENGINE_STATE.ON || gameState.engineState === ENGINE_STATE.STARTING);
+    if (gameState.engineState === ENGINE_STATE.OFF) { 
         gameState.throttle = 0;
         if(engineSound.paused === false) engineSound.pause();
     }
@@ -502,12 +510,19 @@
 
     switch (gameState.autopilotState) {
         case AUTOPILOT_STATE.OFF:
-            const playerIsPitchingUpManual = keysPressed['KeyS'] || keysPressed['і'];
             if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {  
-                if (keysPressed['KeyW'] || keysPressed['ц']) { pitchChange = -rotationSpeedInput; } 
-                else if (keysPressed['KeyS'] || keysPressed['і']) { pitchChange = rotationSpeedInput; }  
-                if (keysPressed['KeyA'] || keysPressed['ф']) { rollChange = -rotationSpeedInput; } 
-                else if (keysPressed['KeyD'] || keysPressed['в']) { rollChange = rotationSpeedInput; }    
+                const currentPitchRad = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').x;
+                const currentRollRad = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ').z;
+                if (keysPressed['KeyW'] || keysPressed['ц']) { 
+                    if(currentPitchRad > -MAX_PITCH_ANGLE_RAD) pitchChange = -rotationSpeedInput; 
+                } else if (keysPressed['KeyS'] || keysPressed['і']) {
+                    if(currentPitchRad < MAX_PITCH_ANGLE_RAD) pitchChange = rotationSpeedInput;
+                }
+                if (keysPressed['KeyA'] || keysPressed['ф']) {
+                    if(currentRollRad > -MAX_ROLL_ANGLE_RAD) rollChange = -rotationSpeedInput;
+                } else if (keysPressed['KeyD'] || keysPressed['в']) {
+                    if(currentRollRad < MAX_ROLL_ANGLE_RAD) rollChange = rotationSpeedInput;
+                }
             } else {
                 rollChange = 0;  
                 if ((keysPressed['KeyS'] || keysPressed['і']) && gameState.speed > groundPitchSpeedThreshold) { 
