@@ -199,68 +199,61 @@
     }
   }
 
-  // ОСЬ ТУТ ВСТАВЛЕНО ФУНКЦІЮ setupEventListeners
-  function setupEventListeners() {
+  // ВИПРАВЛЕНА ТА СПРОЩЕНА ФУНКЦІЯ
+function setupEventListeners() {
+    // 1. Обробник НАтискання (keydown) - тільки фіксує, які клавіші затиснуті
     document.addEventListener('keydown', (event) => {
-        // Використовуємо event.code для незалежності від розкладки, але також зберігаємо event.key для можливої обробки українських літер
         keysPressed[event.code] = true;
-        keysPressed[event.key.toLowerCase()] = true; 
-
-        if (event.code === 'KeyC') { // Зміна камери
+        // Додаємо підтримку української розкладки для 'к' і 'r'
+        if (event.key.toLowerCase() === 'к') {
+            keysPressed['к'] = true;
+        }
+        
+        // Зміна камери (залишаємо тут, бо це миттєва дія)
+        if (event.code === 'KeyC') {
             currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
             updateCameraModeIndicator();
             if (orbitControls) { 
                  orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
             }
         }
-        
-        // Запуск двигуна по натисканню 'R' (або 'К')
-        if ((event.code === 'KeyR' || event.key.toLowerCase() === 'к') && !gameState.engineOn && !keysPressed.engineStartInitiated) { 
-            keysPressed.engineStartInitiated = true; 
-            if (startSound) startSound.play().catch(e => console.warn("Не вдалося відтворити звук запуску", e));
-            setTimeout(() => {
-                if (gameState.fuel > 0) {
-                    gameState.engineOn = true;
-                    console.log("Двигун запущено");
-                } else {
-                    console.log("Немає пального для запуску двигуна.");
-                }
-                // Скидання engineStartInitiated може бути в keyup або після успішного запуску,
-                // щоб уникнути конфлікту з логікою зупинки утриманням.
-                // Поки що залишимо скидання в keyup.
-            }, 500); 
-        }
-
-        // Допоміжний зліт по натисканню '6' (якщо інші умови виконуються в updateGameState)
-        if (event.key === '6') { // 'Digit6' для event.code
-            // Логіка для 'Digit6' (допоміжний зліт) вже є в updateGameState,
-            // keysPressed['Digit6'] там перевіряється.
-        }
     });
 
+    // 2. Обробник ВІДпускання (keyup) - тут вся логіка старту/зупинки
     document.addEventListener('keyup', (event) => {
-        keysPressed[event.code] = false;
-        keysPressed[event.key.toLowerCase()] = false;
+        const isRKey = event.code === 'KeyR' || event.key.toLowerCase() === 'к';
 
-        if (event.code === 'KeyR' || event.key.toLowerCase() === 'к') {
-            keysPressed.engineStartInitiated = false; 
-            // Логіка зупинки двигуна утриманням 'R' має бути в updateGameState.
-            // Тут можна скинути флаг, якщо зупинка відбувається по відпусканню після утримання.
+        if (isRKey) {
+            // Перевіряємо, чи це був КОРОТКИЙ клік
+            if (timeRHeld < timeToStopEngine) {
+                // Якщо двигун вимкнений, і є пальне - запускаємо його
+                if (!gameState.engineOn && gameState.fuel > 0) {
+                    console.log("Запуск двигуна коротким натисканням...");
+                    gameState.engineOn = true;
+                    if (startSound) startSound.play().catch(e => console.warn("Не вдалося відтворити звук запуску", e));
+                }
+            }
+            // Якщо це був ДОВГИЙ клік (timeRHeld >= timeToStopEngine),
+            // то двигун вже був зупинений в updateGameState.
+            // Ми просто нічого не робимо, і він залишається вимкненим.
         }
-        
-        // Запуск ракети по відпусканню 'Space' (якщо в повітрі)
-        // Або по натисканню, якщо змінити на 'keydown'
+
+        // Запуск ракети
         if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
             console.log("Запуск ракети!");
             if (missileSound) {
-                missileSound.currentTime = 0; // Починаємо звук з початку
+                missileSound.currentTime = 0;
                 missileSound.play().catch(e => console.warn("Не вдалося відтворити звук ракети", e));
             }
-            gameState.score++; // Приклад: збільшуємо рахунок
-            // Тут має бути ваша логіка створення та запуску об'єкта ракети
+            gameState.score++;
         }
+
+        // Очищуємо прапорці натиснутих клавіш
+        keysPressed[event.code] = false;
+        keysPressed[event.key.toLowerCase()] = false;
     });
 
+    // 3. Обробник зміни розміру вікна
     window.addEventListener('resize', () => {
         if (camera && renderer) { 
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -268,8 +261,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
     });
-
-    keysPressed.engineStartInitiated = false; 
+}
   }
 
 
