@@ -27,27 +27,37 @@
     #fuelGaugeScaleLabels { width: 190px; display: flex; justify-content: space-between; font-size: 10px; color: #ccc; margin-top: -12px; position: relative; z-index: 0; padding: 0 10px; box-sizing: border-box; }
 
     /* === СТИЛІ ДЛЯ СЕНСОРНИХ КНОПОК === */
-    #touch-controls-container {
+    .touch-controls-area {
         position: absolute;
         bottom: 20px;
         left: 20px;
         right: 20px;
+        top: 20px;
         display: none; /* За замовчуванням приховані */
-        justify-content: space-between;
-        align-items: flex-end;
-        pointer-events: none; /* Контейнер не блокує дотики */
+        pointer-events: none;
         z-index: 10;
     }
     .touch-cluster {
+        position: absolute;
         display: grid;
-        grid-template-areas: ". up ." "left . right" ". down .";
         gap: 15px;
-        pointer-events: all; /* Кнопки реагують на дотики */
+        pointer-events: all; 
     }
-    .touch-cluster.right {
+    .flight-controls {
+        left: 0;
+        bottom: 0;
+        grid-template-areas: ". up ." "left . right" ". down .";
+    }
+    .throttle-controls {
+        right: 0;
+        bottom: 0;
         grid-template-areas: "up" "down";
         grid-template-columns: 1fr;
         grid-template-rows: 1fr 1fr;
+    }
+    .action-controls {
+        top: 80px; /* Відступ від HUD */
+        left: 0;
     }
     .touch-btn {
         width: 60px;
@@ -61,6 +71,12 @@
         user-select: none; 
         -webkit-tap-highlight-color: transparent; 
     }
+    .touch-btn.rect { /* Прямокутна кнопка */
+        width: 90px;
+        height: 45px;
+        border-radius: 10px;
+        font-size: 16px;
+    }
     #touch-pitch-up { grid-area: up; }
     #touch-pitch-down { grid-area: down; }
     #touch-roll-left { grid-area: left; }
@@ -69,8 +85,8 @@
     #touch-thr-down { grid-area: down; }
     
     @media (pointer: coarse) {
-        #touch-controls-container {
-            display: flex;
+        .touch-controls-area {
+            display: block;
         }
         .key-info {
             display: none; 
@@ -121,14 +137,17 @@
     R (К): Запуск (тап) / Зупинка (утрим.)<br>
     P (З): Автопілот (Увімк./Вимк.)
 </div>
-<div id="touch-controls-container">
-    <div class="touch-cluster"> 
+<div class="touch-controls-area">
+    <div class="touch-cluster action-controls">
+        <button class="touch-btn rect" id="touch-camera-btn">КАМЕРА</button>
+    </div>
+    <div class="touch-cluster flight-controls"> 
       <button class="touch-btn" id="touch-pitch-up">▲</button>
       <button class="touch-btn" id="touch-roll-left">↶</button>
       <button class="touch-btn" id="touch-roll-right">↷</button>
       <button class="touch-btn" id="touch-pitch-down">▼</button>
     </div>
-    <div class="touch-cluster right"> 
+    <div class="touch-cluster throttle-controls"> 
       <button class="touch-btn" id="touch-thr-up">ТЯГА+</button>
       <button class="touch-btn" id="touch-thr-down">ТЯГА-</button>
     </div>
@@ -309,13 +328,20 @@
     if (indicator) { indicator.textContent = CAMERA_MODE_NAMES[currentCameraMode] || "Невідомий режим"; }
   }
   
+  function cycleCameraMode() {
+    currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
+    updateCameraModeIndicator();
+    if (orbitControls) { 
+        orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
+    }
+    console.log(`Camera mode changed to: ${CAMERA_MODE_NAMES[currentCameraMode]}`);
+  }
+  
   function setupEventListeners() {
     document.addEventListener('keydown', (event) => {
         keysPressed[event.code] = true; keysPressed[event.key.toLowerCase()] = true; 
         if (event.code === 'KeyC') {
-            currentCameraMode = (currentCameraMode + 1) % Object.keys(CAMERA_MODES).length;
-            updateCameraModeIndicator();
-            if (orbitControls) { orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT); }
+            cycleCameraMode();
         }
         if (event.code === 'KeyP' || event.key.toLowerCase() === 'з') {
             const indicator = document.getElementById('autopilotIndicator');
@@ -356,27 +382,28 @@
   }
 
   function setupTouchControls() {
-    const controls = {
-        'touch-pitch-up': 'KeyS',      
-        'touch-pitch-down': 'KeyW',  
+    const holdable_controls = {
+        'touch-pitch-up': 'KeyS',
+        'touch-pitch-down': 'KeyW',
         'touch-roll-left': 'KeyA',
         'touch-roll-right': 'KeyD',
         'touch-thr-up': 'ShiftLeft',
         'touch-thr-down': 'ControlLeft'
     };
-    for (const [btnId, keyCode] of Object.entries(controls)) {
+    for (const [btnId, keyCode] of Object.entries(holdable_controls)) {
         const btn = document.getElementById(btnId);
         if (btn) {
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keysPressed[keyCode] = true;
-            }, { passive: false });
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keysPressed[keyCode] = false;
-            }, { passive: false });
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keysPressed[keyCode] = true; }, { passive: false });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); keysPressed[keyCode] = false; }, { passive: false });
             btn.addEventListener('contextmenu', (e) => e.preventDefault());
         }
+    }
+    const cameraBtn = document.getElementById('touch-camera-btn');
+    if (cameraBtn) {
+        cameraBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            cycleCameraMode();
+        });
     }
   }
 
@@ -717,7 +744,6 @@
         break;
     }
   }
-
   function updateHUD() {
     const altitudeEl = document.getElementById('altitude'); if (altitudeEl) altitudeEl.textContent = gameState.altitude.toFixed(0) + ' м';
     const pitchEl = document.getElementById('pitch'); if (pitchEl) pitchEl.textContent = gameState.pitch.toFixed(1) + '°';
@@ -729,7 +755,6 @@
     const rpmEl = document.getElementById('rpm'); if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
     const scoreEl = document.getElementById('score'); if (scoreEl) scoreEl.textContent = gameState.score;
   }
-  
   function updateFuelGauge() {
     if (!fuelNeedle || !fuelValueDigital) return;  
     const currentFuelLiters = (gameState.fuel / 100) * MAX_FUEL_LITERS;  
@@ -741,7 +766,6 @@
     else if (normalizedFuel < 0.25) { fuelValueDigital.style.color = '#ffd700';}  
     else { fuelValueDigital.style.color = 'white'; }
   }
-
   function updateAerodromeIndicator() {
     if (!bayraktarModel || !aerodromeArrowElement || !aerodromeDistanceElement) {
         if (aerodromeArrowElement) aerodromeArrowElement.textContent = '-';
@@ -752,8 +776,7 @@
     aerodromeDistanceElement.textContent = Math.round(distance) + ' м';
     const dirToAerodromeWorld = new THREE.Vector3().subVectors(aerodromePosition, bayraktarModel.position);
     dirToAerodromeWorld.y = 0; dirToAerodromeWorld.normalize();
-    const aircraftForwardWorld = new THREE.Vector3(0, 0, 1);  
-    aircraftForwardWorld.applyQuaternion(bayraktarModel.quaternion);
+    const aircraftForwardWorld = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
     aircraftForwardWorld.y = 0; aircraftForwardWorld.normalize();
     if (dirToAerodromeWorld.lengthSq() === 0 || aircraftForwardWorld.lengthSq() === 0) {  
         aerodromeArrowElement.style.transform = 'rotate(0deg)';
@@ -767,10 +790,11 @@
     aerodromeArrowElement.textContent = '↑';  
     aerodromeArrowElement.style.transform = `rotate(${angleDeg}deg)`;
   }
-
+  
   function animate() {
     requestAnimationFrame(animate);
     const deltaTime = clock.getDelta();
+    updateSunAndSky();
     if (mixer) mixer.update(deltaTime);
     if(bayraktarModel) {  
         updateGameState(deltaTime);
@@ -779,11 +803,11 @@
     updateHUD();
     updateFuelGauge();  
     updateAerodromeIndicator();
-    updateWaypointLine(); // Оновлюємо лінію маршруту в кожному кадрі
-    updateWaypointHUD();  // Оновлюємо HUD маршруту
+    updateWaypointLine(); 
+    updateWaypointHUD();  
     renderer.render(scene, camera);
   }
-
+  
   init();  
 </script>
 </body>
