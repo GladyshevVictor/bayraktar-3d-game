@@ -211,8 +211,6 @@
 
   const MIN_ASSISTED_LIFTOFF_VSPEED = 1.5; // Мінімальна вертикальна швидкість для допомоги при зльоті
 
-  // ---
-
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
 
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
@@ -245,12 +243,7 @@
 
     waypoints = [];  
 
-
-
     const waypointMaterialTemplate = new THREE.MeshBasicMaterial({ wireframe: true, opacity: 0.6, transparent: true });
-
-    
-
     waypointCoordinates.forEach((coord, index) => {
 
         const waypointGeometry = new THREE.TorusGeometry(WAYPOINT_REACH_THRESHOLD * 0.6, 5, 8, 20);         
@@ -267,15 +260,11 @@
 
     });
 
-
-
     highlightCurrentWaypoint();
 
     updateWaypointLine();
 
   }
-
-
 
   function highlightCurrentWaypoint() {
 
@@ -298,8 +287,6 @@
     });
 
   }
-
-
 
   function updateWaypointLine() {
 
@@ -368,7 +355,6 @@
     }
 
   }
-
 
 
   function updateCameraModeIndicator() {
