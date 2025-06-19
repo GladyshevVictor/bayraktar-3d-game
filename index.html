@@ -397,7 +397,7 @@
     // (Цей блок потребує доопрацювання, якщо keysPressed['r'] або keysPressed['к'] тримається довго)
     // Поки що, проста перевірка наявності натискання 'r' або 'к' не зовсім відповідає "утриманню"
     // Для "утримання" потрібен таймер або лічильник часу утримання.
-    // Приклад: якщо (keysPressed['r'] || keysPressed['к']) { timeRHeld += deltaTime; if (timeRHeld > 1.0 && gameState.engineOn) { gameState.engineOn = false; /* ... */}} else { timeRHeld = 0;}
+     Приклад: якщо (keysPressed['r'] || keysPressed['к']) { timeRHeld += deltaTime; if (timeRHeld > 1.0 && gameState.engineOn) { gameState.engineOn = false; /* ... */}} else { timeRHeld = 0;}
     // Наразі, ця логіка просто вимкне двигун, якщо R/К натиснуто і двигун працює.
     if (gameState.engineOn && (keysPressed['KeyR'] || keysPressed['к'])) { 
         // Це місце для логіки зупинки двигуна утриманням.
