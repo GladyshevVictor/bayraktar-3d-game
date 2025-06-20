@@ -345,15 +345,15 @@ function setupEventListeners() {
         bayraktarModel = gltf.scene;
         bayraktarModel.scale.set(2, 2, 2);  
         bayraktarModel.position.set(0, 0.5, 0);  
-        propellerMesh = null;  
+        propelerMesh = null;  
         bayraktarModel.traverse(node => {  
             if (node.isMesh) { node.castShadow = true; }
             if (node.name === "propeller") {  
-                propellerMesh = node;
-                if (propellerMesh) { initialPropellerQuaternion = propellerMesh.quaternion.clone(); }
+                propelerMesh = node;
+                if (propelerMesh) { initialPropellerQuaternion = propelerMesh.quaternion.clone(); }
             }
         });
-        if (!propellerMesh) { console.warn("Меш гвинта 'propeller' НЕ ЗНАЙДЕНО!");}
+        if (!propelerMesh) { console.warn("Меш гвинта 'propeler' НЕ ЗНАЙДЕНО!");}
         scene.add(bayraktarModel);
         if (gltf.animations && gltf.animations.length) mixer = new THREE.AnimationMixer(bayraktarModel);
         loadingDiv.style.display = 'none';
