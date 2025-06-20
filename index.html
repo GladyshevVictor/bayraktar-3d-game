@@ -261,11 +261,7 @@ function setupEventListeners() {
         }
     });
 }
-
 // =================== КІНЕЦЬ БЛОКУ ДЛЯ ЗАМІНИ ===================
-  
-
-
   function init() {
    clock = new THREE.Clock();
     scene = new THREE.Scene();
@@ -408,7 +404,6 @@ function setupEventListeners() {
         timeRHeld = 0;
     }
 
-
  // =================================================================
 // === ПОЧАТОК НОВОГО БЛОКУ ФІЗИКИ (Земля/Повітря) ===
 // =================================================================
@@ -447,6 +442,21 @@ else if (currentPitch < -MAX_PITCH_ANGLE_RAD) bayraktarModel.rotation.x = -MAX_P
 if (currentRoll > MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = MAX_ROLL_ANGLE_RAD;
 else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
 
+// --- ОБЕРТАННЯ ГВИНТА ---
+if (propellerMesh) {
+    if (gameState.engineOn && gameState.rpm > 0) {
+        const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI;  
+        const propellerRotationChange = rotationSpeedRPM * deltaTime;
+        propellerMesh.rotateY(propellerRotationChange);  
+    } else if (!gameState.engineOn && initialPropellerQuaternion) {
+        if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) {
+             propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
+        } else { 
+            propellerMesh.quaternion.copy(initialPropellerQuaternion); 
+        }
+    }
+}
+// --- КІНЕЦЬ ОБЕРТАННЯ ГВИНТА ---
 // --- Розрахунок сил ---
 const onGround = gameState.altitude <= 0.2;
 
