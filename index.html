@@ -499,13 +499,18 @@ if (!onGround) { // Якщо ми ВЖЕ в повітрі
     const pitchEffectFactor = 1.0 + Math.abs(bayraktarModel.rotation.x) * 1.5; // Спрощена модель
     lift = baseLiftFactor * gameState.speed * gameState.speed * pitchEffectFactor;
 } else { // Якщо ми на землі
+   
     // Перевіряємо умови для зльоту
-    const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
-    if (playerIsPitchingUp && gameState.speed >= NORMAL_TAKEOFF_SPEED_MPS && gameState.engineOn) {
-        allowTakeoff = true;
-    }
-    if ((keysPressed['Digit6']) && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS && gameState.engineOn) {
-        allowTakeoff = true;
+const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
+const playerIsYawing = keysPressed['KeyQ'] || keysPressed['й'] || keysPressed['KeyE'] || keysPressed['у'];
+
+// Дозволяємо зліт, тільки якщо гравець піднімає ніс і НЕ повертає літак по осі Y
+if (playerIsPitchingUp && !playerIsYawing && gameState.speed >= NORMAL_TAKEOFF_SPEED_MPS && gameState.engineOn) {
+    allowTakeoff = true;
+}
+// Допоміжний зліт (клавіша 6) залишається без змін
+if ((keysPressed['Digit6']) && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS && gameState.engineOn) {
+    allowTakeoff = true;
     }
 
     if (allowTakeoff) {
