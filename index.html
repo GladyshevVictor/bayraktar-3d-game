@@ -246,12 +246,10 @@ function setupEventListeners() {
             }
             gameState.score++;
         }
-
         // Очищаємо прапорці натиснутих клавіш
         keysPressed[event.code] = false;
         keysPressed[event.key.toLowerCase()] = false;
     });
-
     // Обробник зміни розміру вікна
     window.addEventListener('resize', () => {
         if (camera && renderer) { 
@@ -533,11 +531,25 @@ const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.
 bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
 bayraktarModel.position.y += gameState.vSpeed * deltaTime;
 
-// --- Обробка зіткнення з землею ---
-if (bayraktarModel.position.y < 0) {
-    bayraktarModel.position.y = 0;
-    gameState.vSpeed = 0; // Повністю гасимо вертикальну швидкість при контакті
+
+// --- БІЛЬШ НАДІЙНА ОБРОБКА ПЕРЕТИНУ З ЗЕМЛЕЮ ---
+// Цей код гарантує, що жодна частина моделі не провалиться під землю
+
+// Оновлюємо матрицю світу, щоб BoundingBox був точним після всіх обертань
+bayraktarModel.updateMatrixWorld(true);
+// Розраховуємо BoundingBox, який охоплює всю модель
+modelBoundingBox.setFromObject(bayraktarModel);
+
+// Якщо найнижча точка моделі (крило, хвіст, шасі) провалилася під землю (y < 0)
+if (modelBoundingBox.min.y < 0) {
+    // Піднімаємо всю модель на висоту провалу, щоб вона "встала" на поверхню
+    bayraktarModel.position.y -= modelBoundingBox.min.y;
+
+    // Гасимо будь-яку вертикальну швидкість, щоб уникнути підстрибування
+    gameState.vSpeed = 0;
 }
+
+// Оновлюємо висоту в стані гри на основі нового, скоригованого положення
 gameState.altitude = bayraktarModel.position.y;
 // =================================================================
 // === КІНЕЦЬ НОВОГО БЛОКУ ФІЗИКИ ===
