@@ -36,7 +36,7 @@
 </head>
 <body>
 <canvas id="hudCanvas"></canvas>
-<div id="loading">Завантаження моделі Bayraktar... <span id="progress">0%</span></div>
+<div id="loading">Завантаження... <span id="progress">0%</span></div>
 <div id="hud">
     <div>Цілі знищено: <span id="score">0</span></div>
     <div id="cameraModeIndicator">Режим камери: <span id="currentCameraModeName">Слідування</span></div>
@@ -441,7 +441,19 @@ if (currentPitch > MAX_PITCH_ANGLE_RAD) bayraktarModel.rotation.x = MAX_PITCH_AN
 else if (currentPitch < -MAX_PITCH_ANGLE_RAD) bayraktarModel.rotation.x = -MAX_PITCH_ANGLE_RAD;
 if (currentRoll > MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = MAX_ROLL_ANGLE_RAD;
 else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
-
+// --- КЕРУВАННЯ ГАЗОМ (Throttle) ---
+if (gameState.engineOn) {
+    if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) {
+        gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
+    }
+    if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) {
+        gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
+    }
+}
+// Автоматичне скидання газу, якщо двигун раптом вимкнеться
+if (!gameState.engineOn && gameState.throttle > 0) {
+    gameState.throttle = 0;
+}
 // --- ОБЕРТАННЯ ГВИНТА ---
 if (propellerMesh) {
     if (gameState.engineOn && gameState.rpm > 0) {
