@@ -521,6 +521,7 @@ if (!onGround) { // Якщо ми ВЖЕ в повітрі
 }
 
 // 5. Зміна вертикальної швидкості
+const prevVSpeed = gameState.vSpeed; // <-- ДОДАЙТЕ ЦЕЙ РЯДОК
 if (!onGround || allowTakeoff) {
     gameState.vSpeed += (lift - gravity) * deltaTime;
 } else {
@@ -541,17 +542,7 @@ gameState.altitude = bayraktarModel.position.y;
 // =================================================================
 // === КІНЕЦЬ НОВОГО БЛОКУ ФІЗИКИ ===
 // ===============================================================
-    
-    if (bayraktarModel) {  
-        bayraktarModel.updateMatrixWorld(true); modelBoundingBox.setFromObject(bayraktarModel);
-        if (modelBoundingBox.min.y < 0) {  
-            const verticalSpeedAtTouchdown = prevVSpeed; bayraktarModel.position.y -= modelBoundingBox.min.y;  
-            if (verticalSpeedAtTouchdown < -2.0) { console.log("Hard landing! VSpeed:", verticalSpeedAtTouchdown.toFixed(2)); gameState.vSpeed = Math.abs(verticalSpeedAtTouchdown * 0.20); }  
-            else if (verticalSpeedAtTouchdown < -0.05) { console.log("Touchdown. VSpeed:", verticalSpeedAtTouchdown.toFixed(2)); gameState.vSpeed = 0; }  
-            else if (gameState.altitude <= onGroundThreshold) { gameState.vSpeed = 0; }
-        } gameState.altitude = bayraktarModel.position.y;  
-    }
-
+   
     // --- ПЕРЕВІРКА ПРОХОДЖЕННЯ МАРШРУТНИХ ТОЧОК ---
     if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) {
         const currentTargetPosition = waypointCoordinates[currentWaypointIndex];
