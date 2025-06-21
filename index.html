@@ -452,8 +452,8 @@ if (onGround) {
         // Поворот всього літака вслід за колесом (ефект залежить від швидкості)
         if (gameState.speed > 1) {
             const turnFactor = Math.min(gameState.speed / 15, 1.0); // Ефективність повороту зростає зі швидкістю
-            const bodyTurnSpeed = noseGear.rotation.z * turnFactor * deltaTime;
-            bayraktarModel.rotateY(bodyTurnSpeed);
+            const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
+            bayraktarModel.rotateX(bodyTurnSpeed);
         }
     }
     yawChange = 0; // На землі основне рискання (поворот всього корпусу) вимкнено
