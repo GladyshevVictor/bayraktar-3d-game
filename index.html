@@ -447,7 +447,7 @@ if (onGround) {
         }
 
         // Плавно повертаємо колесо до цільового кута, а не миттєво
-        noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.z, targetAngle, steeringSpeed);
+        noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.x, targetAngle, steeringSpeed);
 
         // Поворот всього літака вслід за колесом (ефект залежить від швидкості)
         if (gameState.speed > 1) {
