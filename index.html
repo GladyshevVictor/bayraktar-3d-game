@@ -352,7 +352,14 @@ function setupEventListeners() {
             if (node.name === "propeller") {  
                 propellerMesh = node;
                 if (propellerMesh) { initialPropellerQuaternion = propellerMesh.quaternion.clone(); }
-            }
+              }
+          // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
+        // Пошук передньої стійки
+        if (node.name === "Noce_Gear") { // Увага: тут ім'я з помилкою, як у вашому файлі. Якщо ви виправили в Blender, виправте і тут.
+            noseGear = node;
+            console.log("Передня стійка шасі знайдена!");
+        }
+        // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
         });
         if (!propellerMesh) { console.warn("Меш гвинта 'propeller' НЕ ЗНАЙДЕНО!");}
         scene.add(bayraktarModel);
