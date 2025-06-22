@@ -592,6 +592,11 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     // 4. Зміна горизонтальної швидкості
     gameState.speed += (actualThrust - drag - currentBrakingForceApplied - frictionForce) * deltaTime;
     gameState.speed = Math.max(0, gameState.speed);
+   // ▼▼▼ ДОДАЙТЕ ЦЕЙ ВІДСУТНІЙ БЛОК ▼▼▼
+if (gameState.isTaxiMode && onGround) {
+    gameState.speed = Math.min(gameState.speed, MAX_TAXI_SPEED_MPS);
+}
+// ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
 
     // --- Розрахунок підйомної сили (Lift) і вертикальної швидкості ---
     let lift = 0;
