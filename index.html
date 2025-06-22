@@ -669,7 +669,7 @@ gameState.altitude = bayraktarModel.position.y;
             propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
         }
     }
-
+   /* 
     // Обертання коліс під час руху
     if (onGround && gameState.speed > 0.1) {
         const rotationChange = (gameState.speed * deltaTime) / wheelRadius;
@@ -677,7 +677,7 @@ gameState.altitude = bayraktarModel.position.y;
         if (mainWheelL) mainWheelL.rotateX(rotationChange);
         if (mainWheelR) mainWheelR.rotateX(rotationChange);
     }
-
+*/
     // Оновлення стану для HUD
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
     if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; }
