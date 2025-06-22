@@ -362,6 +362,12 @@ function setupEventListeners() {
             console.log("Передня стійка шасі знайдена!");
         }
         // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
+          // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
+if (node.name === "mainWheel") {
+    mainWheel = node;
+    console.log("Колесо передньої стійки 'mainWheel' знайдено!");
+}
+// ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲
           // ▼▼▼ ДОДАЙТЕ ЦЕЙ КОД ДЛЯ ПОШУКУ ОСНОВНИХ КОЛІС ▼▼▼
 if (node.name === "mainWheelL") { // Увага: імена можуть бути інші у вашій моделі
     mainWheelL = node;
