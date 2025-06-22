@@ -362,11 +362,11 @@ function setupEventListeners() {
         }
         // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
           // ▼▼▼ ДОДАЙТЕ ЦЕЙ КОД ДЛЯ ПОШУКУ ОСНОВНИХ КОЛІС ▼▼▼
-if (node.name === "Main_Wheel_L") { // Увага: імена можуть бути інші у вашій моделі
-    mainWheelL = node;
+if (node.name === "mainWheelL.001") { // Увага: імена можуть бути інші у вашій моделі
+    mainWheelL.001 = node;
     console.log("Ліве основне колесо знайдено!");
 }
-if (node.name === "Main_Wheel_R") { // Увага: імена можуть бути інші у вашій моделі
+if (node.name === "mainWheelR") { // Увага: імена можуть бути інші у вашій моделі
     mainWheelR = node;
     console.log("Праве основне колесо знайдено!");
 }
