@@ -81,6 +81,7 @@
   let scene, camera, renderer, clock, orbitControls;
   let bayraktarModel, mixer;
   let propellerMesh = null;  
+  let noseGear; // <--- ДОДАЙТЕ ЦЕЙ РЯДОК
   let initialPropellerQuaternion = null;  
   const PROPELLER_RETURN_SPEED = 0.05;  
 
@@ -351,7 +352,53 @@ function setupEventListeners() {
             if (node.name === "propeller") {  
                 propellerMesh = node;
                 if (propellerMesh) { initialPropellerQuaternion = propellerMesh.quaternion.clone(); }
-            }
+              }
+          // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
+        // Пошук передньої стійки
+        if (node.name === "Noce_Gear") { // Увага: тут ім'я з помилкою, як у вашому файлі. Якщо ви виправили в Blender, виправте і тут.
+            noseGear = node;
+            console.log("Передня стійка шасі знайдена!");
+        }
+        // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
+          // --- ПЕРЕВІРКА КОНТАКТУ ВСІХ КОЛІС ІЗ ЗЕМЛЕЮ ---
+let noseGearOnGround = false;
+let mainWheelL_onGround = false;
+let mainWheelR_onGround = false;
+
+// Приблизний радіус колеса в метрах.
+// Можливо, вам доведеться підібрати це значення.
+const wheelRadius = 0.4; 
+const wheelWorldPosition = new THREE.Vector3(); // Створюємо вектор один раз для економії ресурсів
+
+// Перевірка передньої стійки
+if (noseGear) { 
+    noseGear.getWorldPosition(wheelWorldPosition);
+    if (wheelWorldPosition.y <= wheelRadius) {
+        noseGearOnGround = true;
+    }
+}
+// Перевірка лівого основного колеса
+if (mainWheelL) {
+    mainWheelL.getWorldPosition(wheelWorldPosition);
+    if (wheelWorldPosition.y <= wheelRadius) {
+        mainWheelL_onGround = true;
+    }
+}
+// Перевірка правого основного колеса
+if (mainWheelR) {
+    mainWheelR.getWorldPosition(wheelWorldPosition);
+    if (wheelWorldPosition.y <= wheelRadius) {
+        mainWheelR_onGround = true;
+    }
+}
+// Тепер у нас є три прапорці: noseGearOnGround, mainWheelL_onGround, mainWheelR_onGround
+
+// Для діагностики можна вивести результат в консоль:
+/*
+console.log(
+    `На землі: Ніс: ${noseGearOnGround}, Ліве: ${mainWheelL_onGround}, Праве: ${mainWheelR_onGround}`
+);
+*/
         });
         if (!propellerMesh) { console.warn("Меш гвинта 'propeller' НЕ ЗНАЙДЕНО!");}
         scene.add(bayraktarModel);
@@ -422,14 +469,49 @@ if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {
     if (keysPressed['KeyA'] || keysPressed['ф']) rollChange = rotationSpeedInput;
     if (keysPressed['KeyD'] || keysPressed['в']) rollChange = -rotationSpeedInput;
 }
-// Керування рисканням (завжди активне, але ефективність різна)
-const yawEffectiveness = (gameState.altitude > 0.1) ? 1.0 : 0.6;
-if (keysPressed['KeyQ'] || keysPressed['й']) yawChange = rotationSpeedInput * yawEffectiveness;
-if (keysPressed['KeyE'] || keysPressed['у']) yawChange = -rotationSpeedInput * yawEffectiveness;
+// --- КЕРУВАННЯ РИСКАННЯМ (ПОВОРОТ СТІЙКИ НА ЗЕМЛІ / РУЛЬ У ПОВІТРІ) ---
+const onGround = gameState.altitude <= 0.2; // Визначаємо, чи літак на землі
+
+if (onGround) {
+    // --- Поведінка на землі: повертаємо передню стійку ---
+    if (noseGear) {
+        const steeringSpeed = 2.0 * deltaTime; // Швидкість повороту колеса
+        const maxSteeringAngle = Math.PI / 6; // Максимальний кут повороту (30 градусів)
+        let targetAngle = 0; // Цільовий кут для колеса
+
+        if (keysPressed['KeyQ'] || keysPressed['й']) {
+            targetAngle = maxSteeringAngle; // Поворот вліво
+        } else if (keysPressed['KeyE'] || keysPressed['у']) {
+            targetAngle = -maxSteeringAngle; // Поворот вправо
+        }
+
+        // Плавно повертаємо колесо до цільового кута, а не миттєво
+        noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
+
+        // Поворот всього літака вслід за колесом (ефект залежить від швидкості)
+        if (gameState.speed > 1) {
+            const turnFactor = Math.min(gameState.speed / 15, 1.0); // Ефективність повороту зростає зі швидкістю
+            const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
+            bayraktarModel.rotateY(bodyTurnSpeed);
+        }
+    }
+    yawChange = 0; // На землі основне рискання (поворот всього корпусу) вимкнено
+
+} else {
+    // --- Поведінка в повітрі: використовуємо хвостовий руль ---
+    const yawEffectiveness = 1.0;
+    if (keysPressed['KeyQ'] || keysPressed['й']) yawChange = rotationSpeedInput * yawEffectiveness;
+    if (keysPressed['KeyE'] || keysPressed['у']) yawChange = -rotationSpeedInput * yawEffectiveness;
+
+    // Плавно вирівнюємо стійку шасі у повітрі, щоб вона не бовталась
+    if (noseGear) {
+        noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, 0, 0.1);
+    }
+}
 
 bayraktarModel.rotateX(pitchChange);
 bayraktarModel.rotateZ(rollChange);
-bayraktarModel.rotateY(yawChange);
+//bayraktarModel.rotateY(yawChange);
 
 // Обмеження кутів, щоб уникнути перевертання
 let currentPitch = bayraktarModel.rotation.x; let currentRoll = bayraktarModel.rotation.z;
@@ -467,9 +549,6 @@ if (propellerMesh) {
     }
 }
 // --- КІНЕЦЬ ОБЕРТАННЯ ГВИНТА ---
-// --- Розрахунок сил ---
-const onGround = gameState.altitude <= 0.2;
-
 // 1. Тяга (Thrust)
 let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0);
 
