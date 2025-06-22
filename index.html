@@ -443,6 +443,8 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
 
     // ВИЗНАЧЕННЯ ПЕРЕБУВАННЯ НА ЗЕМЛІ (виправлено та переміщено сюди)
     const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround || mainWheel_onGround;
+    // ▼▼▼ РЯДОК ДЛЯ ДІАГНОСТИКИ 1 ▼▼▼
+    console.log(`onGround: ${onGround}, vSpeed: ${gameState.vSpeed.toFixed(2)}, altitude: ${gameState.altitude.toFixed(2)}`);
 
     // --- Логіка запуску/зупинки двигуна утриманням R ---
     if (keysPressed['KeyR'] || keysPressed['к']) {
@@ -604,7 +606,8 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     } else {
         gameState.vSpeed = 0;
     }
-
+  // ▼▼▼ РЯДОК ДЛЯ ДІАГНОСТИКИ 2 ▼▼▼
+    console.log(`Applying movement -> vSpeed: ${gameState.vSpeed.toFixed(2)}, lift: ${lift.toFixed(2)}`);
     // --- Застосування руху ---
     const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
