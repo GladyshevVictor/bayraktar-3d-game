@@ -492,11 +492,11 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
                 targetAngle = -maxSteeringAngle;
             }
 
-            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
+            noseGear.rotation.z = THREE.MathUtils.lerp(noseGear.rotation.z, targetAngle, steeringSpeed);
 
             if (gameState.speed > 1) {
                 const turnFactor = Math.min(gameState.speed / 15, 1.0);
-                const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
+                const bodyTurnSpeed = noseGear.rotation.z * turnFactor * deltaTime;
                 bayraktarModel.rotateY(bodyTurnSpeed);
             }
         }
