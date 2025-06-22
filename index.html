@@ -404,65 +404,104 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
   }
   let timeRHeld = 0; // <--- ОСЬ ЦЕЙ РЯДОК ПОТРІБНО ДОДАТИ
   const timeToStopEngine = 1; // <--- ДОДАЙТЕ ЦЕЙ РЯДОК (1 - це 1 секунди, можна змінити)
- function updateGameState(deltaTime) {
+// ▼▼▼ ПОЧАТОК БЛОКУ ДЛЯ ПОВНОЇ ЗАМІНИ ▼▼▼
+function updateGameState(deltaTime) {
     if (!bayraktarModel) return;
-    // ▼▼▼ ВСТАВТЕ БЛОК ПЕРЕВІРКИ СЮДИ ▼▼▼
-    // --- ПЕРЕВІРКА КОНТАКТУ ВСІХ КОЛІС ІЗ ЗЕМЛЕЮ ---
+
+    // --- 1. ПЕРЕВІРКА СТАНУ (виконується в кожному кадрі) ---
     let noseGearOnGround = false;
     let mainWheelL_onGround = false;
     let mainWheelR_onGround = false;
-    let mainWheel_onGround = false; // <--- Додаємо прапорець для нового колеса
+    let mainWheel_onGround = false;
 
-    const wheelRadius = 0.4; 
+    const wheelRadius = 0.4;
     const wheelWorldPosition = new THREE.Vector3();
 
-    if (noseGear) { 
+    if (noseGear) {
         noseGear.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
-            noseGearOnGround = true;
-        }
+        if (wheelWorldPosition.y <= wheelRadius) { noseGearOnGround = true; }
+    }
+    if (mainWheel) {
+        mainWheel.getWorldPosition(wheelWorldPosition);
+        if (wheelWorldPosition.y <= wheelRadius) { mainWheel_onGround = true; }
     }
     if (mainWheelL) {
         mainWheelL.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
-            mainWheelL_onGround = true;
-        }
+        if (wheelWorldPosition.y <= wheelRadius) { mainWheelL_onGround = true; }
     }
     if (mainWheelR) {
         mainWheelR.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
-            mainWheelR_onGround = true;
-        }
+        if (wheelWorldPosition.y <= wheelRadius) { mainWheelR_onGround = true; }
     }
-    // --- КІНЕЦЬ БЛОКУ ПЕРЕВІРКИ ---
-// ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ПЕРЕВІРКИ ▼▼▼
-if (mainWheel) {
-    mainWheel.getWorldPosition(wheelWorldPosition);
-    if (wheelWorldPosition.y <= wheelRadius) {
-        mainWheel_onGround = true;
-    }
-}
-// ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
-    // --- Логіка запуску/зупинки двигуна утриманням R ---
-    if (keysPressed['KeyR'] || keysPressed['к']) {
-        // Якщо клавіша R/К натиснута:
-        // Перевіряємо, чи працює двигун, щоб почати відлік часу для зупинки
-        if (gameState.engineOn) {
-            timeRHeld += deltaTime; // Накопичуємо час утримання
 
-            // Якщо час утримання досяг порогу - вимикаємо двигун
+    // Головний прапорець, що літак на землі, якщо хоча б одне колесо її торкається
+    const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround;
+
+
+    // --- 2. ОБРОБКА ВВОДУ ГРАВЦЯ (Керування) ---
+    // Двигун
+    if (keysPressed['KeyR'] || keysPressed['к']) {
+        if (gameState.engineOn) {
+            timeRHeld += deltaTime;
             if (timeRHeld >= timeToStopEngine) {
-                // gameState.engineOn = false; // Вимикаємо тільки один раз
-                if(gameState.engineOn) { // Додаткова перевірка, щоб лог не спамив
+                if(gameState.engineOn) {
                     console.log("Двигун зупинено утриманням.");
                     gameState.engineOn = false;
                 }
             }
         }
     } else {
-        // Якщо клавіша R/К НЕ натиснута - ось ТІЛЬКИ ТОДІ скидаємо таймер.
         timeRHeld = 0;
     }
+
+    // Газ
+    if (gameState.engineOn) {
+        if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
+        if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
+    } else if (gameState.throttle > 0) {
+        gameState.throttle = 0;
+    }
+    
+    // Керування польотом
+    const rotationSpeedInput = 1.5 * deltaTime;
+    let pitchChange = 0, rollChange = 0, yawChange = 0;
+    
+    // Тангаж і крен
+    if (!onGround || gameState.speed > (ASSISTED_TAKEOFF_SPEED_MPS * 0.7)) {
+        if (keysPressed['KeyW'] || keysPressed['ц']) pitchChange = rotationSpeedInput;
+        if (keysPressed['KeyS'] || keysPressed['і']) pitchChange = -rotationSpeedInput;
+        if (keysPressed['KeyA'] || keysPressed['ф']) rollChange = rotationSpeedInput;
+        if (keysPressed['KeyD'] || keysPressed['в']) rollChange = -rotationSpeedInput;
+    }
+
+    // Рискання (поворот)
+    if (onGround) {
+        // На землі: повертаємо передню стійку
+        if (noseGear) {
+            const steeringSpeed = 2.0 * deltaTime;
+            const maxSteeringAngle = Math.PI / 6; // 30 градусів
+            let targetAngle = 0;
+            if (keysPressed['KeyQ'] || keysPressed['й']) targetAngle = maxSteeringAngle;
+            else if (keysPressed['KeyE'] || keysPressed['у']) targetAngle = -maxSteeringAngle;
+            
+            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
+            if (gameState.speed > 1) {
+                const turnFactor = Math.min(gameState.speed / 15, 1.0);
+                const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
+                bayraktarModel.rotateY(bodyTurnSpeed);
+            }
+        }
+    } else {
+        // В повітрі: хвостовий руль
+        if (keysPressed['KeyQ'] || keysPressed['й']) yawChange = rotationSpeedInput;
+        if (keysPressed['KeyE'] || keysPressed['у']) yawChange = -rotationSpeedInput;
+        if (noseGear) noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, 0, 0.1);
+    }
+    
+    // Застосування обертання до моделі
+    bayraktarModel.rotateX(pitchChange);
+    bayraktarModel.rotateZ(rollChange);
+    bayraktarModel.rotateY(yawChange);
 
  // =================================================================
 // === ПОЧАТОК НОВОГО БЛОКУ ФІЗИКИ (Земля/Повітря) ===
@@ -654,49 +693,44 @@ gameState.altitude = bayraktarModel.position.y;
 // === КІНЕЦЬ НОВОГО БЛОКУ ФІЗИКИ ===
 // ===============================================================
    
-    // --- ПЕРЕВІРКА ПРОХОДЖЕННЯ МАРШРУТНИХ ТОЧОК ---
-    if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) {
-        const currentTargetPosition = waypointCoordinates[currentWaypointIndex];
-        if (bayraktarModel.position.distanceTo(currentTargetPosition) < WAYPOINT_REACH_THRESHOLD) {
-            console.log(`Пройдено маршрутну точку ${currentWaypointIndex + 1}!`);
-            currentWaypointIndex++;
-            if (currentWaypointIndex >= waypointCoordinates.length) {
-                console.log("Маршрут завершено!");
-            }
-            createWaypointVisuals(); // Оновлюємо візуалізацію (кольори та лінію)
+  // --- 4. АНІМАЦІЇ ТА ОНОВЛЕННЯ ---
+    // Корекція положення на землі (Bounding Box)
+    bayraktarModel.updateMatrixWorld(true);
+    modelBoundingBox.setFromObject(bayraktarModel);
+    if (modelBoundingBox.min.y < 0) {
+        bayraktarModel.position.y -= modelBoundingBox.min.y;
+        gameState.vSpeed = 0;
+    }
+    gameState.altitude = bayraktarModel.position.y;
+
+    // Обертання гвинта
+    if (propellerMesh) {
+        if (gameState.engineOn && gameState.rpm > 0) {
+            propellerMesh.rotateZ(propellerMesh.rotation.z + (gameState.rpm / 60) * 2 * Math.PI * deltaTime);
+        } else if (!gameState.engineOn && initialPropellerQuaternion) {
+            propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
         }
     }
-    // --- КІНЕЦЬ ПЕРЕВІРКИ МАРШРУТНИХ ТОЧОК ---
-    
-    if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; gameState.fuel = Math.max(0, gameState.fuel); if (gameState.fuel === 0) { engineSound.pause(); engineSound.currentTime = 0; gameState.engineOn = false; gameState.throttle = 0; console.log("Пальне закінчилося. Двигун вимкнено."); } }
+
+    // Обертання коліс під час руху
+    if (onGround && gameState.speed > 0.1) {
+        const rotationChange = (gameState.speed * deltaTime) / wheelRadius;
+        if (mainWheel) mainWheel.rotateX(rotationChange);
+        if (mainWheelL) mainWheelL.rotateX(rotationChange);
+        if (mainWheelR) mainWheelR.rotateX(rotationChange);
+    }
+
+    // Оновлення стану для HUD
     gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
-    if (engineSound && gameState.engineOn) { if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); engineSound.volume = Math.max(0.1, gameState.throttle * 0.5); }  
-    else if (engineSound && !engineSound.paused) { engineSound.pause(); }
-    
+    if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; }
+    //... (решта коду)
     const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
-    gameState.pitch = THREE.MathUtils.radToDeg(euler.x); gameState.roll = THREE.MathUtils.radToDeg(euler.z); gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
-  // Вставте цей блок в кінець updateGameState, перед викликом updateHUD()
-
-// --- ОБЕРТАННЯ КОЛІС ПІД ЧАС РУХУ ---
-if (onGround && gameState.speed > 0.1) {
-    // Розраховуємо кутову швидкість на основі лінійної швидкості літака
-    // Кут повороту = пройдена дистанція / радіус колеса
-    const distancePerFrame = gameState.speed * deltaTime;
-    const rotationChange = distancePerFrame / wheelRadius; // wheelRadius ми визначили раніше
-
-    // Обертаємо колеса навколо їхньої локальної осі X
-    // Увага: якщо колеса обертаються неправильно, спробуйте '.rotateY' або '.rotateZ'
-    if (mainWheel) {
-        mainWheel.rotateX(rotationChange);
-    }
-    if (mainWheelL) {
-        mainWheelL.rotateX(rotationChange);
-    }
-    if (mainWheelR) {
-        mainWheelR.rotateX(rotationChange);
-    }
+    gameState.pitch = THREE.MathUtils.radToDeg(euler.x);
+    gameState.roll = THREE.MathUtils.radToDeg(euler.z);
+    gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
 }
-   // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
+// ▲▲▲ КІНЕЦЬ БЛОКУ ДЛЯ ПОВНОЇ ЗАМІНИ ▲▲▲
+
 } // <--- Це закриваюча дужка функції updateGameState
   function updateCamera(deltaTime) {
     if (!bayraktarModel) { return; }
