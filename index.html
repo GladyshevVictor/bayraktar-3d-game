@@ -472,7 +472,9 @@ const rotationSpeedInput = 1.5 * deltaTime;
 const thrustAcceleration = 15; 
 const dragFactor = 0.008; 
 const baseLiftFactor = 0.018;
-
+// ▼▼▼ ОСЬ ТУТ ЛОГІКА ГАЛЬМ ▼▼▼
+    let currentBrakingForceApplied = (onGround && keysPressed['Space']) ? BRAKING_FORCE : 0;
+    let frictionForce = onGround ? GROUND_FRICTION_FORCE : 0;
 // --- Управління тангажем, креном, рисканням ---
 let pitchChange = 0, rollChange = 0, yawChange = 0;
 const groundControlSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.7;
