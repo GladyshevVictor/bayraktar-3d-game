@@ -411,6 +411,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     let noseGearOnGround = false;
     let mainWheelL_onGround = false;
     let mainWheelR_onGround = false;
+    let mainWheel_onGround = false; // <--- Додаємо прапорець для нового колеса
 
     const wheelRadius = 0.4; 
     const wheelWorldPosition = new THREE.Vector3();
@@ -434,7 +435,14 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
         }
     }
     // --- КІНЕЦЬ БЛОКУ ПЕРЕВІРКИ ---
-
+// ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ПЕРЕВІРКИ ▼▼▼
+if (mainWheel) {
+    mainWheel.getWorldPosition(wheelWorldPosition);
+    if (wheelWorldPosition.y <= wheelRadius) {
+        mainWheel_onGround = true;
+    }
+}
+// ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
     // --- Логіка запуску/зупинки двигуна утриманням R ---
     if (keysPressed['KeyR'] || keysPressed['к']) {
         // Якщо клавіша R/К натиснута:
