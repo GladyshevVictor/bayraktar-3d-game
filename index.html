@@ -399,6 +399,34 @@ if (node.name === "Main_Wheel_R") { // Увага: імена можуть бу�
   const timeToStopEngine = 1; // <--- ДОДАЙТЕ ЦЕЙ РЯДОК (1 - це 1 секунди, можна змінити)
  function updateGameState(deltaTime) {
     if (!bayraktarModel) return;
+    // ▼▼▼ ВСТАВТЕ БЛОК ПЕРЕВІРКИ СЮДИ ▼▼▼
+    // --- ПЕРЕВІРКА КОНТАКТУ ВСІХ КОЛІС ІЗ ЗЕМЛЕЮ ---
+    let noseGearOnGround = false;
+    let mainWheelL_onGround = false;
+    let mainWheelR_onGround = false;
+
+    const wheelRadius = 0.4; 
+    const wheelWorldPosition = new THREE.Vector3();
+
+    if (noseGear) { 
+        noseGear.getWorldPosition(wheelWorldPosition);
+        if (wheelWorldPosition.y <= wheelRadius) {
+            noseGearOnGround = true;
+        }
+    }
+    if (mainWheelL) {
+        mainWheelL.getWorldPosition(wheelWorldPosition);
+        if (wheelWorldPosition.y <= wheelRadius) {
+            mainWheelL_onGround = true;
+        }
+    }
+    if (mainWheelR) {
+        mainWheelR.getWorldPosition(wheelWorldPosition);
+        if (wheelWorldPosition.y <= wheelRadius) {
+            mainWheelR_onGround = true;
+        }
+    }
+    // --- КІНЕЦЬ БЛОКУ ПЕРЕВІРКИ ---
 
     // --- Логіка запуску/зупинки двигуна утриманням R ---
     if (keysPressed['KeyR'] || keysPressed['к']) {
