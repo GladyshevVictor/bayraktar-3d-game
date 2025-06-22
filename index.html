@@ -485,7 +485,7 @@ if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {
     if (keysPressed['KeyD'] || keysPressed['в']) rollChange = -rotationSpeedInput;
 }
 // --- КЕРУВАННЯ РИСКАННЯМ (ПОВОРОТ СТІЙКИ НА ЗЕМЛІ / РУЛЬ У ПОВІТРІ) ---
-const onGround = gameState.altitude <= 0.2; // Визначаємо, чи літак на землі
+const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround;
 
 if (onGround) {
     // --- Поведінка на землі: повертаємо передню стійку ---
@@ -679,7 +679,7 @@ gameState.altitude = bayraktarModel.position.y;
   // Вставте цей блок в кінець updateGameState, перед викликом updateHUD()
 
 // --- ОБЕРТАННЯ КОЛІС ПІД ЧАС РУХУ ---
-const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround;
+
 
 if (onGround && gameState.speed > 0.1) {
     // Розраховуємо кутову швидкість на основі лінійної швидкості літака
