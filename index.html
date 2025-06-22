@@ -122,7 +122,7 @@
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
   const aerodromePosition = new THREE.Vector3(0, 0, 0);  
-  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false };
+  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false, isTaxiMode: false };
   const keysPressed = {};
   const CAMERA_MODES = { FOLLOW: 0, TAIL_VIEW: 1, ORBIT: 2, };
   const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста (на гвинт)", "Орбітальна"];
@@ -457,6 +457,12 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
 
     // ВИЗНАЧЕННЯ ПЕРЕБУВАННЯ НА ЗЕМЛІ (виправлено та переміщено сюди)
     const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround || mainWheel_onGround;
+    // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
+    // Автоматично вимикаємо режим руління, якщо літак злетів
+    if (!onGround && gameState.isTaxiMode) {
+        gameState.isTaxiMode = false;
+    }
+    // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
     // ▼▼▼ РЯДОК ДЛЯ ДІАГНОСТИКИ 1 ▼▼▼
     console.log(`onGround: ${onGround}, vSpeed: ${gameState.vSpeed.toFixed(2)}, altitude: ${gameState.altitude.toFixed(2)}`);
 
@@ -539,16 +545,16 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
 
     // --- КЕРУВАННЯ ГАЗОМ (Throttle) ---
-    if (gameState.engineOn) {
+  if (gameState.engineOn) {
+        // Встановлюємо максимальну тягу залежно від режиму
+        const maxThrottle = gameState.isTaxiMode ? 0.2 : 1.0; // 20% тяги для руління
+
         if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) {
-            gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
+            gameState.throttle = Math.min(maxThrottle, gameState.throttle + 0.5 * deltaTime);
         }
         if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) {
             gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
         }
-    }
-    if (!gameState.engineOn && gameState.throttle > 0) {
-        gameState.throttle = 0;
     }
 
     // --- ОБЕРТАННЯ ГВИНТА ---
