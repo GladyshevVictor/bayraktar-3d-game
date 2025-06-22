@@ -548,19 +548,27 @@ if (gameState.engineOn) {
 if (!gameState.engineOn && gameState.throttle > 0) {
     gameState.throttle = 0;
 }
-// --- ОБЕРТАННЯ ГВИНТА ---
+// --- ОБЕРТАННЯ ГВИНТА (стабільний метод) ---
 if (propellerMesh) {
     if (gameState.engineOn && gameState.rpm > 0) {
-        const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI;  
-        const propellerRotationChange = rotationSpeedRPM * deltaTime;
-        propellerMesh.rotateY(propellerRotationChange);  
+        // Розраховуємо, на який кут потрібно повернути гвинт за цей кадр
+        const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI;
+        const rotationChange = rotationSpeedRPM * deltaTime;
+
+        // 1. Накопичуємо загальний кут у нашій змінній
+        propellerAngle += rotationChange;
+
+        // 2. Встановлюємо точний абсолютний кут обертання для осі Z
+        propellerMesh.rotation.z = propellerAngle;
+
     } else if (!gameState.engineOn && initialPropellerQuaternion) {
-        if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) {
-             propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
-        } else { 
-            propellerMesh.quaternion.copy(initialPropellerQuaternion); 
-        }
+        // Логіка плавного повернення у вихідне положення залишається тією ж
+        propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
+        // Важливо: синхронізуємо наш кут з поточним положенням гвинта, 
+        // щоб при наступному запуску не було ривка.
+        propellerAngle = propellerMesh.rotation.z;
     }
+}
 }
 // --- КІНЕЦЬ ОБЕРТАННЯ ГВИНТА ---
 // 1. Тяга (Thrust)
