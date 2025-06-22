@@ -483,7 +483,6 @@ if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {
     if (keysPressed['KeyD'] || keysPressed['в']) rollChange = -rotationSpeedInput;
 }
 // --- КЕРУВАННЯ РИСКАННЯМ (ПОВОРОТ СТІЙКИ НА ЗЕМЛІ / РУЛЬ У ПОВІТРІ) ---
-const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround;
 
 if (onGround) {
     // --- Поведінка на землі: повертаємо передню стійку ---
