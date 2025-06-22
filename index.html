@@ -424,19 +424,19 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     }
     if (mainWheelL) {
         mainWheelL.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
+        if (wheelWorldPosition.y <= wheelRadius + 0.1) {
             mainWheelL_onGround = true;
         }
     }
     if (mainWheelR) {
         mainWheelR.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
+        if (wheelWorldPosition.y <= wheelRadius + 0.1) {
             mainWheelR_onGround = true;
         }
     }
     if (mainWheel) {
         mainWheel.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
+        if (wheelWorldPosition.y <= wheelRadius + 0.1) {
             mainWheel_onGround = true;
         }
     }
