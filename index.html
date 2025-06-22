@@ -41,6 +41,7 @@
     <div>Цілі знищено: <span id="score">0</span></div>
     <div id="cameraModeIndicator">Режим камери: <span id="currentCameraModeName">Слідування</span></div>
     <div id="aerodromeIndicator">Аеродром: <span id="aerodromeArrow">↑</span> (<span id="aerodromeDistance">--</span> м)</div>
+   <div>Режим руління: <span id="taxiModeStatus">Вимкнено</span></div>
     <div id="waypointIndicator">Наступна точка: <span id="nextWaypointInfo">--</span></div>
 </div>
 <div id="dashboard">
@@ -94,6 +95,7 @@
   let fuelNeedle, fuelValueDigital;  
   let aerodromeArrowElement, aerodromeDistanceElement;  
   let nextWaypointInfoElement; // Для HUD маршруту
+  let taxiModeStatusElement; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
 
   // --- НАЛАШТУВАННЯ МАРШРУТУ ---
   let waypoints = [];  
@@ -218,7 +220,18 @@ function setupEventListeners() {
             if (orbitControls) { 
                  orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
             }
+          }
+
+        // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
+        // Миттєва дія: перемикання режиму руління
+        if (event.code === 'KeyT') {
+            // Дозволяємо перемикати тільки на землі
+            if (gameState.altitude < 1.0) { 
+                gameState.isTaxiMode = !gameState.isTaxiMode;
+                updateTaxiModeHUD(); // Миттєво оновлюємо індикатор
+            }
         }
+      
     });
 
     // Обробник відпускання клавіш (тут вся логіка старту/ракети)
@@ -285,6 +298,7 @@ function setupEventListeners() {
     aerodromeArrowElement = document.getElementById('aerodromeArrow');
     aerodromeDistanceElement = document.getElementById('aerodromeDistance');
     nextWaypointInfoElement = document.getElementById('nextWaypointInfo');
+    taxiModeStatusElement = document.getElementById('taxiModeStatus'); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
@@ -406,7 +420,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
   const timeToStopEngine = 1; // <--- ДОДАЙТЕ ЦЕЙ РЯДОК (1 - це 1 секунди, можна змінити)
  function updateGameState(deltaTime) {
     if (!bayraktarModel) return;
-
+const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30 км/год)
     // --- ПЕРЕВІРКА КОНТАКТУ ВСІХ КОЛІС ІЗ ЗЕМЛЕЮ ---
     let noseGearOnGround = false;
     let mainWheelL_onGround = false;
@@ -607,7 +621,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
         gameState.vSpeed = 0;
     }
   // ▼▼▼ РЯДОК ДЛЯ ДІАГНОСТИКИ 2 ▼▼▼
-    console.log(`Applying movement -> vSpeed: ${gameState.vSpeed.toFixed(2)}, lift: ${lift.toFixed(2)}`);
+    //console.log(`Applying movement -> vSpeed: ${gameState.vSpeed.toFixed(2)}, lift: ${lift.toFixed(2)}`);
     // --- Застосування руху ---
     const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
@@ -725,7 +739,19 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     const rpmEl = document.getElementById('rpm'); if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
     const scoreEl = document.getElementById('score'); if (scoreEl) scoreEl.textContent = gameState.score;
   }
-  
+  // ▼▼▼ ДОДАЙТЕ ЦЮ НОВУ ФУНКЦІЮ ▼▼▼
+function updateTaxiModeHUD() {
+    if (!taxiModeStatusElement) return;
+
+    if (gameState.isTaxiMode) {
+        taxiModeStatusElement.textContent = "Увімкнено";
+        taxiModeStatusElement.style.color = "#00ff00"; // Зелений
+    } else {
+        taxiModeStatusElement.textContent = "Вимкнено";
+        taxiModeStatusElement.style.color = "white";
+    }
+}
+// ▲▲▲ КІНЕЦЬ НОВОЇ ФУНКЦІЇ ▲▲▲
   function updateFuelGauge() {
     if (!fuelNeedle || !fuelValueDigital) return;  
     const currentFuelLiters = (gameState.fuel / 100) * MAX_FUEL_LITERS;  
@@ -778,6 +804,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     updateWaypointLine(); // Оновлюємо лінію маршруту в кожному кадрі
     updateWaypointHUD();  // Оновлюємо HUD маршруту
     renderer.render(scene, camera);
+     updateTaxiModeHUD(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
   }
 
   init();  
