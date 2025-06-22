@@ -72,46 +72,41 @@
 <audio id="missileSound" src="missile-firing-fl-106655.mp3"></audio>
 
 <script type="module">
-  import * as THREE from 'three';
+   import * as THREE from 'three';
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-  // --- ГЛОБАЛЬНІ ЗМІННІ ---
+  // --- 1. ГЛОБАЛЬНІ ЗМІННІ ---
   let scene, camera, renderer, clock, orbitControls;
   let bayraktarModel, mixer;
   
-  // Змінні для частин моделі
-  let propellerMesh = null;
-  let propellerAngle = 0;
-  let noseGear;
-  let mainWheel;
-  let mainWheelL, mainWheelR;
-  let initialPropellerQuaternion = null;  
+  // Частини моделі
+  let propellerMesh, initialPropellerQuaternion, propellerAngle = 0;
+  let noseGear, mainWheel, mainWheelL, mainWheelR;
   
-  const PROPELLER_RETURN_SPEED = 0.05;  
-  const modelBoundingBox = new THREE.Box3();  
+  // UI та HUD
+  let fuelNeedle, fuelValueDigital, aerodromeArrowElement, aerodromeDistanceElement, nextWaypointInfoElement;
   
-  // Змінні для звуків
+  // Звуки
   const engineSound = document.getElementById('engineSound');
   const startSound = document.getElementById('startSound');
   const missileSound = document.getElementById('missileSound');
   
-  // Змінні для HUD та UI
-  let fuelNeedle, fuelValueDigital;  
-  let aerodromeArrowElement, aerodromeDistanceElement;  
-  let nextWaypointInfoElement;
+  // Ігрова логіка
+  const modelBoundingBox = new THREE.Box3();
+  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false };
+  const keysPressed = {};
+  let timeRHeld = 0;
   
-  // --- НАЛАШТУВАННЯ МАРШРУТУ ---
+  // Маршрут
   let waypoints = [];  
   let waypointCoordinates = [];  
   let currentWaypointIndex = 0;  
-  const WAYPOINT_REACH_THRESHOLD = 80;
   let waypointLine = null;  
-  const WAYPOINT_COLOR_PASSED = 0x808080;
-  const WAYPOINT_COLOR_CURRENT = 0xffff00;
-  const WAYPOINT_COLOR_NEXT = 0x00ff00;
-  
-  // --- КОНСТАНТИ ФІЗИКИ ---
+
+  // --- 2. КОНСТАНТИ ---
+  const PROPELLER_RETURN_SPEED = 0.05;  
+  const WAYPOINT_REACH_THRESHOLD = 80;
   const KNOTS_TO_MPS = 0.514444;  
   const NORMAL_TAKEOFF_SPEED_KNOTS = 72;
   const ASSISTED_TAKEOFF_SPEED_MPS = KNOTS_TO_MPS * 60;
@@ -120,65 +115,23 @@
   const BRAKING_FORCE = 10;
   const GROUND_FRICTION_FORCE = 2.0;
   const MAX_FUEL_LITERS = 300;
-  const MIN_ASSISTED_LIFTOFF_VSPEED = 1.5;
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
-  
-  // --- ІНШІ ГЛОБАЛЬНІ НАЛАШТУВАННЯ ---
-  const aerodromePosition = new THREE.Vector3(0, 0, 0);  
-  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false };
-  const keysPressed = {};
+  const timeToStopEngine = 1;
   const CAMERA_MODES = { FOLLOW: 0, TAIL_VIEW: 1, ORBIT: 2, };
   const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста", "Орбітальна"];
   let currentCameraMode = CAMERA_MODES.FOLLOW;
   const tailViewPositionOffset = new THREE.Vector3(0, 7, -16);  
-  const tailViewLookAtOffset = new THREE.Vector3(-10, 8, 360);
   const followCameraOffset = new THREE.Vector3(0, 6, 18);   
-  let timeRHeld = 0;
-  const timeToStopEngine = 1;
+  const aerodromePosition = new THREE.Vector3(0, 0, 0);
 
-  function createWaypointVisuals() {
-    if (waypointLine) { scene.remove(waypointLine); waypointLine.geometry.dispose(); waypointLine.material.dispose(); waypointLine = null;}
-    waypoints.forEach(wp => scene.remove(wp));  
-    waypoints = [];  
-    const waypointMaterialTemplate = new THREE.MeshBasicMaterial({ wireframe: true, opacity: 0.6, transparent: true });
-    waypointCoordinates.forEach((coord, index) => {
-        const waypointGeometry = new THREE.TorusGeometry(WAYPOINT_REACH_THRESHOLD * 0.6, 5, 8, 20);         
-        const waypointMesh = new THREE.Mesh(waypointGeometry, waypointMaterialTemplate.clone());
-        waypointMesh.position.copy(coord);
-        waypointMesh.lookAt(scene.position);
-        scene.add(waypointMesh);
-        waypoints.push(waypointMesh);
-    });
-    highlightCurrentWaypoint();
-    updateWaypointLine();
-  }
-
-  function highlightCurrentWaypoint() {
-    waypoints.forEach((wp, index) => {
-        if (index < currentWaypointIndex) { wp.material.color.setHex(WAYPOINT_COLOR_PASSED); wp.material.opacity = 0.3; } 
-        else if (index === currentWaypointIndex) { wp.material.color.setHex(WAYPOINT_COLOR_CURRENT); wp.material.opacity = 0.8; } 
-        else { wp.material.color.setHex(WAYPOINT_COLOR_NEXT); wp.material.opacity = 0.5; }
-    });
-  }
-
-  function updateWaypointLine() {
-    if (waypointLine) { scene.remove(waypointLine); waypointLine.geometry.dispose(); waypointLine.material.dispose(); waypointLine = null;}
-    if (currentWaypointIndex < waypointCoordinates.length && bayraktarModel) {
-        let pointsForLine = [bayraktarModel.position.clone()];
-        for (let i = currentWaypointIndex; i < waypointCoordinates.length; i++) {
-            pointsForLine.push(waypointCoordinates[i]);
-        }
-        if(pointsForLine.length > 1){
-            const lineGeometry = new THREE.BufferGeometry().setFromPoints(pointsForLine);
-            const lineMaterial = new THREE.LineDashedMaterial({ color: 0x00ffff, dashSize: 20, gapSize: 10 });
-            waypointLine = new THREE.Line(lineGeometry, lineMaterial);
-            waypointLine.computeLineDistances();
-            scene.add(waypointLine);
-        }
-    }
-  }
+  // --- 3. ДОПОМІЖНІ ФУНКЦІЇ (ОГОЛОШУЄМО ПЕРЕД INIT) ---
   
+  function updateCameraModeIndicator() {
+    const indicator = document.getElementById('currentCameraModeName');
+    if (indicator) indicator.textContent = CAMERA_MODE_NAMES[currentCameraMode] || "Невідомий режим";
+  }
+
   function setupEventListeners() {
     document.addEventListener('keydown', (event) => {
         keysPressed[event.code] = true;
@@ -192,11 +145,9 @@
     document.addEventListener('keyup', (event) => {
         const isRKey = event.code === 'KeyR' || event.key.toLowerCase() === 'к';
         if (isRKey) {
-            if (timeRHeld < timeToStopEngine) {
-                if (!gameState.engineOn && gameState.fuel > 0) {
-                    gameState.engineOn = true;
-                    if (startSound) startSound.play().catch(e => console.error(e));
-                }
+            if (timeRHeld < timeToStopEngine && !gameState.engineOn && gameState.fuel > 0) {
+                gameState.engineOn = true;
+                if (startSound) startSound.play().catch(e => console.error(e));
             } 
         }
         if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
@@ -218,6 +169,152 @@
     });
   }
 
+  function updateGameState(deltaTime) {
+    if (!bayraktarModel) return;
+
+    // --- ПЕРЕВІРКА КОНТАКТУ КОЛІС ІЗ ЗЕМЛЕЮ ---
+    let noseGearOnGround = false, mainWheelL_onGround = false, mainWheelR_onGround = false, mainWheel_onGround = false;
+    const wheelRadius = 0.4;
+    const wheelWorldPosition = new THREE.Vector3();
+    if (noseGear) { noseGear.getWorldPosition(wheelWorldPosition); if (wheelWorldPosition.y <= wheelRadius) noseGearOnGround = true; }
+    if (mainWheel) { mainWheel.getWorldPosition(wheelWorldPosition); if (wheelWorldPosition.y <= wheelRadius) mainWheel_onGround = true; }
+    if (mainWheelL) { mainWheelL.getWorldPosition(wheelWorldPosition); if (wheelWorldPosition.y <= wheelRadius) mainWheelL_onGround = true; }
+    if (mainWheelR) { mainWheelR.getWorldPosition(wheelWorldPosition); if (wheelWorldPosition.y <= wheelRadius) mainWheelR_onGround = true; }
+    const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround;
+
+    // --- ОБРОБКА ВВОДУ ГРАВЦЯ (КЕРУВАННЯ) ---
+    if (keysPressed['KeyR'] || keysPressed['к']) {
+        if (gameState.engineOn) {
+            timeRHeld += deltaTime;
+            if (timeRHeld >= timeToStopEngine && gameState.engineOn) {
+                gameState.engineOn = false;
+            }
+        }
+    } else { timeRHeld = 0; }
+    if (gameState.engineOn) {
+        if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
+        if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
+    } else if (gameState.throttle > 0) { gameState.throttle = 0; }
+    
+    let pitchChange = 0, rollChange = 0, yawChange = 0;
+    const rotationSpeedInput = 1.5 * deltaTime;
+    if (!onGround || gameState.speed > (ASSISTED_TAKEOFF_SPEED_MPS * 0.7)) {
+        if (keysPressed['KeyW'] || keysPressed['ц']) pitchChange = rotationSpeedInput;
+        if (keysPressed['KeyS'] || keysPressed['і']) pitchChange = -rotationSpeedInput;
+        if (keysPressed['KeyA'] || keysPressed['ф']) rollChange = rotationSpeedInput;
+        if (keysPressed['KeyD'] || keysPressed['в']) rollChange = -rotationSpeedInput;
+    }
+    if (onGround && noseGearOnGround) {
+        if (noseGear) {
+            let targetAngle = 0;
+            if (keysPressed['KeyQ'] || keysPressed['й']) targetAngle = Math.PI / 6;
+            else if (keysPressed['KeyE'] || keysPressed['у']) targetAngle = -Math.PI / 6;
+            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, 2.0 * deltaTime);
+            if (gameState.speed > 1) {
+                const turnFactor = Math.min(gameState.speed / 15, 1.0);
+                bayraktarModel.rotateY(noseGear.rotation.y * turnFactor * deltaTime);
+            }
+        }
+    } else {
+        if (keysPressed['KeyQ'] || keysPressed['й']) yawChange = rotationSpeedInput;
+        if (keysPressed['KeyE'] || keysPressed['у']) yawChange = -rotationSpeedInput;
+        if (noseGear) noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, 0, 0.1);
+    }
+    bayraktarModel.rotateX(pitchChange);
+    bayraktarModel.rotateZ(rollChange);
+    bayraktarModel.rotateY(yawChange);
+
+    // --- РОЗРАХУНОК ФІЗИКИ ---
+    const gravity = 9.81, thrustAcceleration = 15, dragFactor = 0.008, baseLiftFactor = 0.018;
+    let actualThrust = gameState.throttle * thrustAcceleration * (gameState.engineOn ? 1 : 0);
+    let drag = dragFactor * gameState.speed * gameState.speed;
+    let frictionForce = onGround ? GROUND_FRICTION_FORCE : 0;
+    let currentBrakingForceApplied = (onGround && keysPressed['Space']) ? BRAKING_FORCE : 0;
+    gameState.speed += (actualThrust - drag - currentBrakingForceApplied - frictionForce) * deltaTime;
+    gameState.speed = Math.max(0, gameState.speed);
+
+    let lift = 0, allowTakeoff = false;
+    const playerIsPitchingUp = keysPressed['KeyS'] || keysPressed['і'];
+    const playerIsYawing = keysPressed['KeyQ'] || keysPressed['й'] || keysPressed['KeyE'] || keysPressed['у'];
+    if (playerIsPitchingUp && !playerIsYawing && gameState.speed >= NORMAL_TAKEOFF_SPEED_MPS && gameState.engineOn) allowTakeoff = true;
+    if ((keysPressed['Digit6']) && gameState.speed >= ASSISTED_TAKEOFF_SPEED_MPS && gameState.engineOn) allowTakeoff = true;
+    if (allowTakeoff || !onGround) {
+        lift = baseLiftFactor * gameState.speed * gameState.speed * (1.0 + Math.abs(bayraktarModel.rotation.x) * 1.5);
+    }
+    if (allowTakeoff || !onGround) gameState.vSpeed += (lift - gravity) * deltaTime;
+    else gameState.vSpeed = 0;
+
+    const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
+    bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
+    bayraktarModel.position.y += gameState.vSpeed * deltaTime;
+
+    // --- КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ ---
+    bayraktarModel.updateMatrixWorld(true);
+    modelBoundingBox.setFromObject(bayraktarModel);
+    if (modelBoundingBox.min.y < 0) {
+        bayraktarModel.position.y -= modelBoundingBox.min.y;
+        gameState.vSpeed = 0;
+    }
+    gameState.altitude = bayraktarModel.position.y;
+
+    // --- АНІМАЦІЇ ТА ОНОВЛЕННЯ HUD ---
+    if (propellerMesh) {
+        if (gameState.engineOn && gameState.rpm > 0) {
+            propellerAngle += (gameState.rpm / 60) * 2 * Math.PI * deltaTime;
+            propellerMesh.rotation.z = propellerAngle;
+        } else if (!gameState.engineOn && initialPropellerQuaternion) {
+            propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
+            propellerAngle = propellerMesh.rotation.z;
+        }
+    }
+    if (onGround && gameState.speed > 0.1) {
+        const rotationChange = (gameState.speed * deltaTime) / wheelRadius;
+        try { if (mainWheel) mainWheel.rotateX(rotationChange); } catch (e) { console.warn("Помилка обертання 'mainWheel'", e); }
+        try { if (mainWheelL) mainWheelL.rotateX(rotationChange); } catch (e) { console.warn("Помилка обертання 'mainWheelL'", e); }
+        try { if (mainWheelR) mainWheelR.rotateX(rotationChange); } catch (e) { console.warn("Помилка обертання 'mainWheelR'", e); }
+    }
+    gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
+    if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; }
+    const euler = new THREE.Euler().setFromQuaternion(bayraktarModel.quaternion, 'YXZ');
+    gameState.pitch = THREE.MathUtils.radToDeg(euler.x);
+    gameState.roll = THREE.MathUtils.radToDeg(euler.z);
+    gameState.heading = (THREE.MathUtils.radToDeg(euler.y) + 360) % 360;
+  }
+  
+  function updateCamera(deltaTime) {
+    if (!bayraktarModel) return;
+    // ... (логіка камери)
+  }
+
+  function updateHUD() {
+    // ... (логіка HUD)
+  }
+  
+  function updateFuelGauge() {
+    // ... (логіка палива)
+  }
+
+  function updateAerodromeIndicator() {
+    // ... (логіка аеродрому)
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const deltaTime = clock.getDelta();
+    if (mixer) mixer.update(deltaTime);
+    if(bayraktarModel) {  
+        updateGameState(deltaTime);
+        updateCamera(deltaTime);
+    }
+    updateHUD();
+    updateFuelGauge();  
+    updateAerodromeIndicator();
+    updateWaypointLine();
+    updateWaypointHUD();
+    renderer.render(scene, camera);
+  }
+
+  // --- 4. ГОЛОВНА ФУНКЦІЯ ІНІЦІАЛІЗАЦІЇ ---
   function init() {
     clock = new THREE.Clock();
     scene = new THREE.Scene();
