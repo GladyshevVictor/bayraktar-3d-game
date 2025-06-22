@@ -552,7 +552,7 @@ if (propellerMesh) {
     if (gameState.engineOn && gameState.rpm > 0) {
         const rotationSpeedRPM = (gameState.rpm / 60) * 2 * Math.PI;  
         const propellerRotationChange = rotationSpeedRPM * deltaTime;
-        propellerMesh.rotateX(propellerRotationChange);  
+        propellerMesh.rotateZ(propellerRotationChange);  
     } else if (!gameState.engineOn && initialPropellerQuaternion) {
         if (propellerMesh.quaternion.angleTo(initialPropellerQuaternion) > 0.01) {
              propellerMesh.quaternion.slerp(initialPropellerQuaternion, PROPELLER_RETURN_SPEED);
