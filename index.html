@@ -631,24 +631,23 @@ bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTi
 bayraktarModel.position.y += gameState.vSpeed * deltaTime;
 
 
-// --- БІЛЬШ НАДІЙНА ОБРОБКА ПЕРЕТИНУ З ЗЕМЛЕЮ ---
-// Цей код гарантує, що жодна частина моделі не провалиться під землю
+// --- 4. КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ (з ігноруванням гвинта) ---
+    
+// Тимчасово ховаємо гвинт, щоб він не впливав на розрахунок BoundingBox
+if (propellerMesh) propellerMesh.visible = false;
 
-// Оновлюємо матрицю світу, щоб BoundingBox був точним після всіх обертань
+// Розраховуємо BoundingBox для моделі без гвинта
 bayraktarModel.updateMatrixWorld(true);
-// Розраховуємо BoundingBox, який охоплює всю модель
 modelBoundingBox.setFromObject(bayraktarModel);
 
-// Якщо найнижча точка моделі (крило, хвіст, шасі) провалилася під землю (y < 0)
-if (modelBoundingBox.min.y < 0) {
-    // Піднімаємо всю модель на висоту провалу, щоб вона "встала" на поверхню
-    bayraktarModel.position.y -= modelBoundingBox.min.y;
+// Повертаємо видимість гвинта одразу після розрахунку
+if (propellerMesh) propellerMesh.visible = true;
 
-    // Гасимо будь-яку вертикальну швидкість, щоб уникнути підстрибування
+// Застосовуємо корекцію, якщо потрібно
+if (modelBoundingBox.min.y < 0) {
+    bayraktarModel.position.y -= modelBoundingBox.min.y;
     gameState.vSpeed = 0;
 }
-
-// Оновлюємо висоту в стані гри на основі нового, скоригованого положення
 gameState.altitude = bayraktarModel.position.y;
 // =================================================================
 // === КІНЕЦЬ НОВОГО БЛОКУ ФІЗИКИ ===
