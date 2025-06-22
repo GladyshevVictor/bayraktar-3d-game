@@ -418,25 +418,25 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
 
     if (noseGear) { 
         noseGear.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
+        if (wheelWorldPosition.y <= wheelRadius ) {
             noseGearOnGround = true;
         }
     }
     if (mainWheelL) {
         mainWheelL.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius + 0.5) {
+        if (wheelWorldPosition.y <= wheelRadius +0.1) {
             mainWheelL_onGround = true;
         }
     }
     if (mainWheelR) {
         mainWheelR.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius + 0.5) {
+        if (wheelWorldPosition.y <= wheelRadius +0.1) {
             mainWheelR_onGround = true;
         }
     }
     if (mainWheel) {
         mainWheel.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius + 0.5) {
+        if (wheelWorldPosition.y <= wheelRadius +0.1) {
             mainWheel_onGround = true;
         }
     }
