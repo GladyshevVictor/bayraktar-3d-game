@@ -413,7 +413,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     let mainWheelR_onGround = false;
     let mainWheel_onGround = false; 
 
-    const wheelRadius = 0.4; 
+    const wheelRadius = 0.6; 
     const wheelWorldPosition = new THREE.Vector3();
 
     if (noseGear) { 
@@ -495,7 +495,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
             noseGear.rotation.z = THREE.MathUtils.lerp(noseGear.rotation.z, targetAngle, steeringSpeed);
 
             if (gameState.speed > 1) {
-                const turnFactor = Math.min(gameState.speed / 15, 1.0);
+                const turnFactor = Math.min(gameState.speed / 25, 1.0);
                 const bodyTurnSpeed = noseGear.rotation.z * turnFactor * deltaTime;
                 bayraktarModel.rotateY(bodyTurnSpeed);
             }
@@ -629,6 +629,15 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
         gameState.vSpeed = 0;
     }
     gameState.altitude = bayraktarModel.position.y;
+   // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
+    // Забороняємо "підстрибування", якщо літак на землі і не злітає.
+    // Це притискає його до землі.
+    if (onGround && !allowTakeoff) {
+        if (gameState.vSpeed > 0) {
+            gameState.vSpeed = 0;
+        }
+    }
+    // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
     
     // --- ПЕРЕВІРКА ПРОХОДЖЕННЯ МАРШРУТНИХ ТОЧОК ---
     if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) {
