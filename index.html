@@ -613,7 +613,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
     bayraktarModel.position.y += gameState.vSpeed * deltaTime;
 
-    // --- КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ ---
+       // --- КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ ---
     if (propellerMesh) propellerMesh.visible = false;
     if (mainWheel) mainWheel.visible = false;
     if (mainWheelL) mainWheelL.visible = false;
@@ -627,20 +627,23 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     if (mainWheelL) mainWheelL.visible = true;
     if (mainWheelR) mainWheelR.visible = true;
 
+    // Перевіряємо, чи потрібно коректувати позицію
     if (modelBoundingBox.min.y < 0) {
-        bayraktarModel.position.y -= modelBoundingBox.min.y;
+        const correctionAmount = -modelBoundingBox.min.y;
+
+        // "ЗАПОБІЖНИК": Ігноруємо аномально великі корекції, які є глюком.
+        // Стрибок більше ніж на 1 метр за кадр - це неможливо.
+        if (correctionAmount < 1.0) {
+            bayraktarModel.position.y += correctionAmount; // Застосовуємо тільки розумну корекцію
+        } else {
+            // Якщо корекція занадто велика, логуємо помилку і нічого не робимо
+            console.error("Виявлено аномальну корекцію висоти, ігнорується:", correctionAmount);
+        }
+
+        // В будь-якому випадку, якщо ми торкаємось землі, гасимо вертикальну швидкість
         gameState.vSpeed = 0;
     }
     gameState.altitude = bayraktarModel.position.y;
-   // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
-    // Забороняємо "підстрибування", якщо літак на землі і не злітає.
-    // Це притискає його до землі.
-    if (onGround && !allowTakeoff) {
-        if (gameState.vSpeed > 0) {
-            gameState.vSpeed = 0;
-        }
-    }
-    // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
     
     // --- ПЕРЕВІРКА ПРОХОДЖЕННЯ МАРШРУТНИХ ТОЧОК ---
     if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) {
