@@ -631,17 +631,23 @@ bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTi
 bayraktarModel.position.y += gameState.vSpeed * deltaTime;
 
 
-// --- 4. КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ (з ігноруванням гвинта) ---
+// --- 4. КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ (з ігноруванням ВСІХ рухомих частин) ---
     
-// Тимчасово ховаємо гвинт, щоб він не впливав на розрахунок BoundingBox
+// Тимчасово ховаємо всі об'єкти, що обертаються, щоб вони не впливали на розрахунок BoundingBox
 if (propellerMesh) propellerMesh.visible = false;
+if (mainWheel) mainWheel.visible = false;
+if (mainWheelL) mainWheelL.visible = false;
+if (mainWheelR) mainWheelR.visible = false;
 
-// Розраховуємо BoundingBox для моделі без гвинта
+// Розраховуємо BoundingBox для статичної моделі
 bayraktarModel.updateMatrixWorld(true);
 modelBoundingBox.setFromObject(bayraktarModel);
 
-// Повертаємо видимість гвинта одразу після розрахунку
+// Повертаємо видимість всім об'єктам одразу після розрахунку
 if (propellerMesh) propellerMesh.visible = true;
+if (mainWheel) mainWheel.visible = true;
+if (mainWheelL) mainWheelL.visible = true;
+if (mainWheelR) mainWheelR.visible = true;
 
 // Застосовуємо корекцію, якщо потрібно
 if (modelBoundingBox.min.y < 0) {
