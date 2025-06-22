@@ -462,47 +462,6 @@ function updateGameState(deltaTime) {
         gameState.throttle = 0;
     }
     
-    // Керування польотом
-    const rotationSpeedInput = 1.5 * deltaTime;
-    let pitchChange = 0, rollChange = 0, yawChange = 0;
-    
-    // Тангаж і крен
-    if (!onGround || gameState.speed > (ASSISTED_TAKEOFF_SPEED_MPS * 0.7)) {
-        if (keysPressed['KeyW'] || keysPressed['ц']) pitchChange = rotationSpeedInput;
-        if (keysPressed['KeyS'] || keysPressed['і']) pitchChange = -rotationSpeedInput;
-        if (keysPressed['KeyA'] || keysPressed['ф']) rollChange = rotationSpeedInput;
-        if (keysPressed['KeyD'] || keysPressed['в']) rollChange = -rotationSpeedInput;
-    }
-
-    // Рискання (поворот)
-    if (onGround) {
-        // На землі: повертаємо передню стійку
-        if (noseGear) {
-            const steeringSpeed = 2.0 * deltaTime;
-            const maxSteeringAngle = Math.PI / 6; // 30 градусів
-            let targetAngle = 0;
-            if (keysPressed['KeyQ'] || keysPressed['й']) targetAngle = maxSteeringAngle;
-            else if (keysPressed['KeyE'] || keysPressed['у']) targetAngle = -maxSteeringAngle;
-            
-            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
-            if (gameState.speed > 1) {
-                const turnFactor = Math.min(gameState.speed / 15, 1.0);
-                const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
-                bayraktarModel.rotateY(bodyTurnSpeed);
-            }
-        }
-    } else {
-        // В повітрі: хвостовий руль
-        if (keysPressed['KeyQ'] || keysPressed['й']) yawChange = rotationSpeedInput;
-        if (keysPressed['KeyE'] || keysPressed['у']) yawChange = -rotationSpeedInput;
-        if (noseGear) noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, 0, 0.1);
-    }
-    
-    // Застосування обертання до моделі
-    bayraktarModel.rotateX(pitchChange);
-    bayraktarModel.rotateZ(rollChange);
-    bayraktarModel.rotateY(yawChange);
-
  // =================================================================
 // === ПОЧАТОК НОВОГО БЛОКУ ФІЗИКИ (Земля/Повітря) ===
 // =================================================================
