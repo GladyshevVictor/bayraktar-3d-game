@@ -361,45 +361,16 @@ function setupEventListeners() {
             console.log("Передня стійка шасі знайдена!");
         }
         // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
-          // --- ПЕРЕВІРКА КОНТАКТУ ВСІХ КОЛІС ІЗ ЗЕМЛЕЮ ---
-let noseGearOnGround = false;
-let mainWheelL_onGround = false;
-let mainWheelR_onGround = false;
-
-// Приблизний радіус колеса в метрах.
-// Можливо, вам доведеться підібрати це значення.
-const wheelRadius = 0.4; 
-const wheelWorldPosition = new THREE.Vector3(); // Створюємо вектор один раз для економії ресурсів
-
-// Перевірка передньої стійки
-if (noseGear) { 
-    noseGear.getWorldPosition(wheelWorldPosition);
-    if (wheelWorldPosition.y <= wheelRadius) {
-        noseGearOnGround = true;
-    }
+          // ▼▼▼ ДОДАЙТЕ ЦЕЙ КОД ДЛЯ ПОШУКУ ОСНОВНИХ КОЛІС ▼▼▼
+if (node.name === "Main_Wheel_L") { // Увага: імена можуть бути інші у вашій моделі
+    mainWheelL = node;
+    console.log("Ліве основне колесо знайдено!");
 }
-// Перевірка лівого основного колеса
-if (mainWheelL) {
-    mainWheelL.getWorldPosition(wheelWorldPosition);
-    if (wheelWorldPosition.y <= wheelRadius) {
-        mainWheelL_onGround = true;
-    }
+if (node.name === "Main_Wheel_R") { // Увага: імена можуть бути інші у вашій моделі
+    mainWheelR = node;
+    console.log("Праве основне колесо знайдено!");
 }
-// Перевірка правого основного колеса
-if (mainWheelR) {
-    mainWheelR.getWorldPosition(wheelWorldPosition);
-    if (wheelWorldPosition.y <= wheelRadius) {
-        mainWheelR_onGround = true;
-    }
-}
-// Тепер у нас є три прапорці: noseGearOnGround, mainWheelL_onGround, mainWheelR_onGround
-
-// Для діагностики можна вивести результат в консоль:
-/*
-console.log(
-    `На землі: Ніс: ${noseGearOnGround}, Ліве: ${mainWheelL_onGround}, Праве: ${mainWheelR_onGround}`
-);
-*/
+// ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
         });
         if (!propellerMesh) { console.warn("Меш гвинта 'propeller' НЕ ЗНАЙДЕНО!");}
         scene.add(bayraktarModel);
