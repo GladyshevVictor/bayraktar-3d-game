@@ -421,6 +421,7 @@ function updateGameState(deltaTime) {
         noseGear.getWorldPosition(wheelWorldPosition);
         if (wheelWorldPosition.y <= wheelRadius) { noseGearOnGround = true; }
     }
+  /* 
     if (mainWheel) {
         mainWheel.getWorldPosition(wheelWorldPosition);
         if (wheelWorldPosition.y <= wheelRadius) { mainWheel_onGround = true; }
@@ -433,7 +434,7 @@ function updateGameState(deltaTime) {
         mainWheelR.getWorldPosition(wheelWorldPosition);
         if (wheelWorldPosition.y <= wheelRadius) { mainWheelR_onGround = true; }
     }
-
+*/
     // Головний прапорець, що літак на землі, якщо хоча б одне колесо її торкається
     const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround;
 
