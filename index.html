@@ -580,8 +580,8 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
 
         if (gameState.speed > 1 && noseGear) {
             const turnFactor = Math.min(gameState.speed / 25, 1.0);
-            const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
-            bayraktarModel.rotateY(bodyTurnSpeed);
+            const bodyTurnSpeed = noseGear.rotation.z * turnFactor * deltaTime;
+            bayraktarModel.rotateZ(bodyTurnSpeed);
         }
         
         yawChange = 0;
