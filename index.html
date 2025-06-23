@@ -861,6 +861,7 @@ function updateTaxiModeHUD() {
     if(bayraktarModel) {  
         updateGameState(deltaTime);
         updateCamera(deltaTime);
+     updateAutopilotHUD(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК 
     }
     updateHUD();
     updateFuelGauge();  
