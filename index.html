@@ -547,6 +547,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
 
         if (gameState.isAutopilotOn) {
             // --- РЕЖИМ АВТОПІЛОТА ---
+          const maxSteeringAngle = THREE.MathUtils.degToRad(20); // <<< Змінено на 20 градусів
             let targetPoints = [];
             let currentTargetIndex = 0;
 
@@ -604,7 +605,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
 
         } else {
             // --- РУЧНИЙ РЕЖИМ ---
-            const maxSteeringAngle = THREE.MathUtils.degToRad(25);
+           const maxSteeringAngle = THREE.MathUtils.degToRad(20); // <<< Змінено на 20 градусів
             if (keysPressed['KeyQ'] || keysPressed['й']) {
                 targetAngle = maxSteeringAngle;
             } else if (keysPressed['KeyE'] || keysPressed['у']) {
