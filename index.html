@@ -489,10 +489,28 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     }
     if (mainWheel) {
         mainWheel.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
+        if (wheelWorldPosition.y <= wheelRadius +0.1) {
             mainWheel_onGround = true;
-        }
+   }
+    const onGround = timeOffGround < onGroundGracePeriod;
+
+    // ▼▼▼ ВСТАВЛЯТИ ПОТРІБНО САМЕ СЮДИ ▼▼▼
+    // --- Керування видимістю маршрутів ---
+    if (taxiwayLine) {
+        taxiwayLine.visible = onGround; // Лінія руління видима тільки на землі
     }
+    // Ховаємо або показуємо повітряні маршрути
+    if (waypointLine) {
+        waypointLine.visible = !onGround; // Лінія польоту видима тільки в повітрі
+    }
+    if (waypoints && waypoints.length > 0) {
+        waypoints.forEach(wp => {
+            wp.visible = !onGround; // Кільця-точки видимі тільки в повітрі
+        });
+    }
+    // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
+    }
+   
 
     // ВИЗНАЧЕННЯ ПЕРЕБУВАННЯ НА ЗЕМЛІ (виправлено та переміщено сюди)
     const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround || mainWheel_onGround;
