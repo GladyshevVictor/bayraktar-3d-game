@@ -555,9 +555,14 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     let pitchChange = 0, rollChange = 0, yawChange = 0;
     const groundControlSpeedThreshold = ASSISTED_TAKEOFF_SPEED_MPS * 0.7;
 
+    // Тангаж (W/S) - дозволений на землі при наборі швидкості для зльоту
     if (gameState.altitude > 0.1 || gameState.speed > groundControlSpeedThreshold) {
-        if (keysPressed['KeyW'] || keysPressed['ц']) pitchChange = rotationSpeedInput;
-        if (keysPressed['KeyS'] || keysPressed['і']) pitchChange = -rotationSpeedInput;
+        if (keysPressed['KeyW'] || keysPressed['ц']) pitchChange = -rotationSpeedInput; // W - ніс донизу
+        if (keysPressed['KeyS'] || keysPressed['і']) pitchChange = rotationSpeedInput;  // S - ніс догори (для зльоту)
+    }
+    
+    // Крен (A/D) - працює ТІЛЬКИ в повітрі
+    if (!onGround) {
         if (keysPressed['KeyA'] || keysPressed['ф']) rollChange = rotationSpeedInput;
         if (keysPressed['KeyD'] || keysPressed['в']) rollChange = -rotationSpeedInput;
     }
