@@ -495,8 +495,12 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         }
     } // <-- Дужка має закривати `if (mainWheel)` саме тут.
 
-    // ВИЗНАЧЕННЯ ПЕРЕБУВАННЯ НА ЗЕМЛІ (ця частина вже є, але тепер вона буде працювати правильно)
-    const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround || mainWheel_onGround;
+   // ВИЗНАЧЕННЯ ПЕРЕБУВАННЯ НА ЗЕМЛІ
+    const physicallyOnGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround || mainWheel_onGround;
+
+    // --- Логіка "прилипання" до землі, щоб уникнути скакання ---
+    // Вважаємо, що літак на землі, якщо він фізично торкається її АБО його висота менше 5 метрів.
+    const onGround = physicallyOnGround || gameState.altitude < 5.0;
     
     // --- Керування видимістю маршрутів ---
     if (taxiwayLine) {
@@ -807,9 +811,10 @@ if (gameState.isTaxiMode && onGround) {
     gameState.altitude = bayraktarModel.position.y;
     // ▲▲▲ КІНЕЦЬ ВІДСУТНЬОГО БЛОКУ ▲▲▲
    // ▼▼▼ ДОДАЙТЕ ЦЕЙ НОВИЙ БЛОК ▼▼▼
-    // Додаткова логіка "приклеювання" до землі.
+   // Додаткова логіка "приклеювання" до землі.
     // Вона не дає з'явитися вертикальній швидкості від мікровідривів.
-    if (onGround && !allowTakeoff) {
+    // ВАЖЛИВО: Використовуємо `physicallyOnGround`, щоб не блокувати зліт.
+    if (physicallyOnGround && !allowTakeoff) {
         if (gameState.vSpeed > 0) {
             gameState.vSpeed = 0;
         }
