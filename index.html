@@ -103,7 +103,8 @@
   let waypoints = [];  
   let waypointCoordinates = [];  
   let currentWaypointIndex = 0; 
-  let currentTaxiwayPointIndex = 0; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+  let currentPathPointIndex = 0; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+  let dynamicPath = [];          // <<< ДОДАЙТЕ ЦЮ ЗМІННУ
   const WAYPOINT_REACH_THRESHOLD = 80; // Збільшено для легшого проходження
   const TAXIWAY_POINT_REACH_THRESHOLD = 5; // <<< ДОДАЙТЕ ЦЮ КОНСТАНТУ
   let waypointLine = null;  
@@ -689,8 +690,9 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         // Гальма, які вмикає гравець
         if (keysPressed['Space']) {
             currentBrakingForceApplied = BRAKING_FORCE;
+            // Переносимо стабілізатор сюди
+            bayraktarModel.rotation.z = THREE.MathUtils.lerp(bayraktarModel.rotation.z, 0, brakingRollStabilization);
         }
-        
         // Пасивне тертя кочення
         frictionForce = GROUND_FRICTION_FORCE;
        // ▼▼▼ ДОДАЙТЕ ЦЕЙ РЯДОК СТАБІЛІЗАЦІЇ ▼▼▼
@@ -907,6 +909,22 @@ function createTaxiwayVisuals() {
         scene.add(taxiwayLine);
     }
 }
+  // ▼▼▼ ДОДАЙТЕ ЦЮ ВІДСУТНЮ ФУНКЦІЮ ▼▼▼
+function generateTurnaroundPath() {
+    if (!bayraktarModel) return;
+    console.log("Генерація маршруту для розвороту на 180 градусів...");
+    const runwayWidth = 200;
+    const margin = 20;
+    const turnRadius = (runwayWidth / 2) - margin;
+    const startPos = bayraktarModel.position.clone();
+    const targetX = startPos.x < 0 ? turnRadius : -turnRadius;
+    const point1 = new THREE.Vector3(targetX, startPos.y, startPos.z);
+    const point2 = new THREE.Vector3(0, startPos.y, startPos.z - turnRadius);
+    const point3 = new THREE.Vector3(-targetX, startPos.y, startPos.z);
+    dynamicPath = [point1, point2, point3];
+    currentPathPointIndex = 0;
+}
+// ▲▲▲ КІНЕЦЬ НОВОЇ ФУНКЦІЇ ▲▲▲
 // ▲▲▲ КІНЕЦЬ НОВОЇ ФУНКЦІЇ ▲▲▲
   // ▼▼▼ ДОДАЙТЕ ЦЮ НОВУ ФУНКЦІЮ ▼▼▼
 function updateTaxiModeHUD() {
