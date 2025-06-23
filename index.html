@@ -660,7 +660,19 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     }
     bayraktarModel.rotateX(pitchChange);
     bayraktarModel.rotateZ(rollChange);
-    //bayraktarModel.rotateY(yawChange); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+    bayraktarModel.rotateY(yawChange); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+    // ▼▼▼ НОВИЙ БЛОК: АКТИВНА СТАБІЛІЗАЦІЯ НА ЗЕМЛІ ▼▼▼
+    if (onGround) {
+        // Коефіцієнт стабілізації. Чим він більший, тим сильніше літак "пручається" нахилам.
+        const stabilizationFactor = 0.08; 
+
+        // Плавно повертаємо крен (вісь Z) до нуля
+        bayraktarModel.rotation.z = THREE.MathUtils.lerp(bayraktarModel.rotation.z, 0, stabilizationFactor);
+
+        // Плавно повертаємо тангаж (вісь X) до нуля
+        bayraktarModel.rotation.x = THREE.MathUtils.lerp(bayraktarModel.rotation.x, 0, stabilizationFactor);
+    }
+    // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
    
     let currentPitch = bayraktarModel.rotation.x; let currentRoll = bayraktarModel.rotation.z;
     while (currentPitch > Math.PI) currentPitch -= 2 * Math.PI; while (currentPitch < -Math.PI) currentPitch += 2 * Math.PI;
