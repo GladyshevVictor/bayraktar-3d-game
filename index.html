@@ -444,7 +444,9 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
   const timeToStopEngine = 1; // <--- ДОДАЙТЕ ЦЕЙ РЯДОК (1 - це 1 секунди, можна змінити)
  function updateGameState(deltaTime) {
     if (!bayraktarModel) return;
+    let targetAngle = 0; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
 const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30 км/год)
+    const TURN_SPEED_LIMIT_MPS = 4.2; // <<< ДОДАЙТЕ ЦЮ КОНСТАНТУ (15 км/год)
     // --- ПЕРЕВІРКА КОНТАКТУ ВСІХ КОЛІС ІЗ ЗЕМЛЕЮ ---
     let noseGearOnGround = false;
     let mainWheelL_onGround = false;
@@ -512,7 +514,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     const rotationSpeedInput = 1.5 * deltaTime;
     const thrustAcceleration = 15; 
     const dragFactor = 0.008; 
-    const baseLiftFactor = 0.007;
+    const baseLiftFactor = 0.005;
 
     // --- Управління тангажем, креном, рисканням ---
     let pitchChange = 0, rollChange = 0, yawChange = 0;
@@ -527,7 +529,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     
     // --- КЕРУВАННЯ РИСКАННЯМ (ПОВОРОТ СТІЙКИ НА ЗЕМЛІ / РУЛЬ У ПОВІТРІ) ---
     if (onGround) {
-        let targetAngle = 0; // Цільовий кут для стійки шасі
+         targetAngle = 0; // Цільовий кут для стійки шасі
 
         if (gameState.isAutopilotOn && taxiwayPoints.length > currentTaxiwayPointIndex) {
             // --- РЕЖИМ АВТОПІЛОТА ---
@@ -643,11 +645,22 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     // 3. Гальма (Brakes) і Тертя кочення (Friction)
     let currentBrakingForceApplied = 0;
     let frictionForce = 0;
+    let autoBrakeForce = 0; // Нова змінна для авто-гальм
+
     if (onGround) {
-        if (keysPressed['Space']) { // Активне гальмування пробілом
+        // Гальма, які вмикає гравець
+        if (keysPressed['Space']) {
             currentBrakingForceApplied = BRAKING_FORCE;
-        } else { // Пасивне тертя кочення
-            frictionForce = GROUND_FRICTION_FORCE;
+        }
+        
+        // Пасивне тертя кочення
+        frictionForce = GROUND_FRICTION_FORCE;
+
+        // Автоматичне гальмування в поворотах, якщо швидкість завелика
+        const isTurning = Math.abs(targetAngle) > 0.05; // Перевіряємо, чи є команда на поворот
+        if (isTurning && gameState.speed > TURN_SPEED_LIMIT_MPS) {
+            autoBrakeForce = BRAKING_FORCE * 0.8; // Застосовуємо 80% сили гальм
+            console.log("Автоматичне гальмування в повороті!");
         }
     }
 
