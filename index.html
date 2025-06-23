@@ -453,7 +453,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     let mainWheelR_onGround = false;
     let mainWheel_onGround = false; 
 
-    const wheelRadius = 0.45; 
+    const wheelRadius = 0.4; 
     const wheelWorldPosition = new THREE.Vector3();
 
     if (noseGear) { 
@@ -464,13 +464,13 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     }
     if (mainWheelL) {
         mainWheelL.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
+        if (wheelWorldPosition.y <= wheelRadius +0.1) {
             mainWheelL_onGround = true;
         }
     }
     if (mainWheelR) {
         mainWheelR.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius) {
+        if (wheelWorldPosition.y <= wheelRadius +0.1) {
             mainWheelR_onGround = true;
         }
     }
