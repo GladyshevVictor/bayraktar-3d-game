@@ -615,7 +615,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
                     let angle = forwardVector.angleTo(directionToTarget);
                     const cross = new THREE.Vector3().crossVectors(forwardVector, directionToTarget);
                     if (cross.y < 0) { angle = -angle; }
-                    const maxSteeringAngle = THREE.MathUtils.degToRad(25);
+                    const maxSteeringAngle = THREE.MathUtils.degToRad(20);
                     targetAngle = THREE.MathUtils.clamp(angle, -maxSteeringAngle, maxSteeringAngle);
                 }
             } else {
@@ -626,7 +626,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
 
         } else {
             // --- РУЧНИЙ РЕЖИМ ---
-           const maxSteeringAngle = THREE.MathUtils.degToRad(10); // <<< Змінено на 15 градусів
+           const maxSteeringAngle = THREE.MathUtils.degToRad(15); // <<< Змінено на 15 градусів
             if (keysPressed['KeyQ'] || keysPressed['й']) {
                 targetAngle = maxSteeringAngle;
             } else if (keysPressed['KeyE'] || keysPressed['у']) {
