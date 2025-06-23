@@ -253,9 +253,9 @@ function setupEventListeners() {
             // в updateGameState, і ми не хочемо його знову запускати.
         }
 
-        // --- Логіка для клавіші Space (Ракета) ---
-        if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
-            console.log("Запуск ракети!");
+         // --- Логіка для клавіші Space (Ракета) ---
+        if (event.code === 'Space' && gameState.altitude >= 500 && bayraktarModel) { // <<< ОСЬ ТУТ ЗМІНА
+            console.log("Запуск ракети! Висота понад 500 м."); // Можна оновити лог для ясності
             if (missileSound) {
                 missileSound.currentTime = 0;
                 missileSound.play().catch(e => console.error(e));
