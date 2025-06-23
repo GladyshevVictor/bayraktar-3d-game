@@ -42,7 +42,7 @@
     <div id="cameraModeIndicator">Режим камери: <span id="currentCameraModeName">Слідування</span></div>
     <div id="aerodromeIndicator">Аеродром: <span id="aerodromeArrow">↑</span> (<span id="aerodromeDistance">--</span> м)</div>
    <div>Режим руління: <span id="taxiModeStatus">Вимкнено</span></div>
-  <div>Автопілот руління: <span id="autopilotStatus">Вимкнено</span></div
+  <div>Автопілот руління: <span id="autopilotStatus">Вимкнено</span></div>
     <div id="waypointIndicator">Наступна точка: <span id="nextWaypointInfo">--</span></div>
 </div>
 <div id="dashboard">
@@ -530,27 +530,64 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     
     // --- КЕРУВАННЯ РИСКАННЯМ (ПОВОРОТ СТІЙКИ НА ЗЕМЛІ / РУЛЬ У ПОВІТРІ) ---
     if (onGround) {
-        if (noseGear) {
-            const steeringSpeed = 2.0 * deltaTime;
-            const maxSteeringAngle = Math.PI / 6;
-            let targetAngle = 0;
+        let targetAngle = 0; // Цільовий кут для стійки шасі
 
+        if (gameState.isAutopilotOn && taxiwayPoints.length > currentTaxiwayPointIndex) {
+            // --- РЕЖИМ АВТОПІЛОТА ---
+            const currentPos = bayraktarModel.position;
+            let targetPos = taxiwayPoints[currentTaxiwayPointIndex];
+
+            // Перевірка, чи ми досягли поточної точки
+            if (currentPos.distanceTo(targetPos) < TAXIWAY_POINT_REACH_THRESHOLD) {
+                currentTaxiwayPointIndex++;
+                console.log(`Досягнуто точки руління, наступна: ${currentTaxiwayPointIndex}`);
+                // Перевірка, чи не закінчився маршрут
+                if (currentTaxiwayPointIndex >= taxiwayPoints.length) {
+                    console.log("Маршрут руління завершено.");
+                    gameState.isAutopilotOn = false; // Вимикаємо автопілот
+                }
+            }
+
+            // Оновлюємо ціль, якщо індекс змінився
+            if (currentTaxiwayPointIndex < taxiwayPoints.length) {
+                targetPos = taxiwayPoints[currentTaxiwayPointIndex];
+
+                const directionToTarget = new THREE.Vector3().subVectors(targetPos, currentPos).normalize();
+                const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
+                
+                let angle = forwardVector.angleTo(directionToTarget);
+                const cross = new THREE.Vector3().crossVectors(forwardVector, directionToTarget);
+                if (cross.y < 0) { angle = -angle; }
+                
+                const maxSteeringAngle = Math.PI / 4;
+                targetAngle = THREE.MathUtils.clamp(angle, -maxSteeringAngle, maxSteeringAngle);
+            }
+
+        } else {
+            // --- РУЧНИЙ РЕЖИМ ---
+            const maxSteeringAngle = Math.PI / 6;
             if (keysPressed['KeyQ'] || keysPressed['й']) {
                 targetAngle = maxSteeringAngle;
             } else if (keysPressed['KeyE'] || keysPressed['у']) {
                 targetAngle = -maxSteeringAngle;
             }
-
-            noseGear.rotation.z = THREE.MathUtils.lerp(noseGear.rotation.z, targetAngle, steeringSpeed);
-
-            if (gameState.speed > 1) {
-                const turnFactor = Math.min(gameState.speed / 25, 1.0);
-                const bodyTurnSpeed = noseGear.rotation.z * turnFactor * deltaTime;
-                bayraktarModel.rotateY(bodyTurnSpeed);
-            }
         }
+        
+        // Застосовуємо розрахований targetAngle до стійки шасі
+        if (noseGear) {
+            const steeringSpeed = 1.0 * deltaTime;
+            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
+        }
+
+        if (gameState.speed > 1 && noseGear) {
+            const turnFactor = Math.min(gameState.speed / 25, 1.0);
+            const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
+            bayraktarModel.rotateY(bodyTurnSpeed);
+        }
+        
         yawChange = 0;
     } else {
+        // --- КЕРУВАННЯ В ПОВІТРІ ---
         const yawEffectiveness = 1.0;
         if (keysPressed['KeyQ'] || keysPressed['й']) yawChange = rotationSpeedInput * yawEffectiveness;
         if (keysPressed['KeyE'] || keysPressed['у']) yawChange = -rotationSpeedInput * yawEffectiveness;
