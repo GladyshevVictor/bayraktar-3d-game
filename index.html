@@ -515,6 +515,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     const thrustAcceleration = 15; 
     const dragFactor = 0.008; 
     const baseLiftFactor = 0.005;
+   const brakingRollStabilization = 0.1;
 
     // --- Управління тангажем, креном, рисканням ---
     let pitchChange = 0, rollChange = 0, yawChange = 0;
@@ -655,11 +656,14 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         
         // Пасивне тертя кочення
         frictionForce = GROUND_FRICTION_FORCE;
+       // ▼▼▼ ДОДАЙТЕ ЦЕЙ РЯДОК СТАБІЛІЗАЦІЇ ▼▼▼
+            // Активна стабілізація крену під час гальмування, щоб не перекидатися
+            bayraktarModel.rotation.z = THREE.MathUtils.lerp(bayraktarModel.rotation.z, 0, brakingRollStabilization);
 
         // Автоматичне гальмування в поворотах, якщо швидкість завелика
         const isTurning = Math.abs(targetAngle) > 0.05; // Перевіряємо, чи є команда на поворот
         if (isTurning && gameState.speed > TURN_SPEED_LIMIT_MPS) {
-            autoBrakeForce = BRAKING_FORCE * 0.6; // Застосовуємо 60% сили гальм
+            autoBrakeForce = BRAKING_FORCE * 0.5; // Застосовуємо 50% сили гальм
             console.log("Автоматичне гальмування в повороті!");
         }
     }
