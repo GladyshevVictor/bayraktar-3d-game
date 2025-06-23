@@ -426,6 +426,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     updateAerodromeIndicator();
     updateWaypointHUD(); // Початкове оновлення HUD маршруту
     animate();
+    
   }
   let timeRHeld = 0; // <--- ОСЬ ЦЕЙ РЯДОК ПОТРІБНО ДОДАТИ
   const timeToStopEngine = 1; // <--- ДОДАЙТЕ ЦЕЙ РЯДОК (1 - це 1 секунди, можна змінити)
@@ -761,6 +762,23 @@ if (gameState.isTaxiMode && onGround) {
     const rpmEl = document.getElementById('rpm'); if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
     const scoreEl = document.getElementById('score'); if (scoreEl) scoreEl.textContent = gameState.score;
   }
+  // ▼▼▼ ДОДАЙТЕ ЦЮ ВІДСУТНЮ ФУНКЦІЮ ▼▼▼
+function createTaxiwayVisuals() {
+    if (taxiwayLine) {
+        scene.remove(taxiwayLine);
+        taxiwayLine.geometry.dispose();
+        taxiwayLine.material.dispose();
+    }
+    
+    if (taxiwayPoints.length > 1) {
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(taxiwayPoints);
+        // Жовтий колір та більша товщина для кращої видимості на землі
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 }); 
+        taxiwayLine = new THREE.Line(lineGeometry, lineMaterial);
+        scene.add(taxiwayLine);
+    }
+}
+// ▲▲▲ КІНЕЦЬ НОВОЇ ФУНКЦІЇ ▲▲▲
   // ▼▼▼ ДОДАЙТЕ ЦЮ НОВУ ФУНКЦІЮ ▼▼▼
 function updateTaxiModeHUD() {
     if (!taxiModeStatusElement) return;
