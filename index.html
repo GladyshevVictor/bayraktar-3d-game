@@ -669,7 +669,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     // ▼▼▼ НОВИЙ БЛОК: АКТИВНА СТАБІЛІЗАЦІЯ НА ЗЕМЛІ ▼▼▼
     if (onGround) {
         // Коефіцієнт стабілізації. Чим він більший, тим сильніше літак "пручається" нахилам.
-        const stabilizationFactor = 0.08; 
+        const stabilizationFactor = 0.1; 
 
         // Плавно повертаємо крен (вісь Z) до нуля
         bayraktarModel.rotation.z = THREE.MathUtils.lerp(bayraktarModel.rotation.z, 0, stabilizationFactor);
