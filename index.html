@@ -609,7 +609,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     // --- КЕРУВАННЯ ГАЗОМ (Throttle) ---
   if (gameState.engineOn) {
         // Встановлюємо максимальну тягу залежно від режиму
-        const maxThrottle = gameState.isTaxiMode ? 0.2 : 1.0; // 20% тяги для руління
+        const maxThrottle = gameState.isTaxiMode ? 0.18 : 1.0; // 20% тяги для руління
 
         if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) {
             gameState.throttle = Math.min(maxThrottle, gameState.throttle + 0.5 * deltaTime);
@@ -720,7 +720,7 @@ if (gameState.isTaxiMode && onGround) {
 
         // "ЗАПОБІЖНИК": Ігноруємо аномально великі корекції, які є глюком.
         // Стрибок більше ніж на 1 метр за кадр - це неможливо.
-        if (correctionAmount < 1.0) {
+        if (correctionAmount < 0.2) {
             bayraktarModel.position.y += correctionAmount; // Застосовуємо тільки розумну корекцію
         } else {
             // Якщо корекція занадто велика, логуємо помилку і нічого не робимо
@@ -731,6 +731,15 @@ if (gameState.isTaxiMode && onGround) {
         gameState.vSpeed = 0;
     }
     gameState.altitude = bayraktarModel.position.y;
+   // ▼▼▼ ДОДАЙТЕ ЦЕЙ НОВИЙ БЛОК ▼▼▼
+    // Додаткова логіка "приклеювання" до землі.
+    // Вона не дає з'явитися вертикальній швидкості від мікровідривів.
+    if (onGround && !allowTakeoff) {
+        if (gameState.vSpeed > 0) {
+            gameState.vSpeed = 0;
+        }
+    }
+    // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
     
     // --- ПЕРЕВІРКА ПРОХОДЖЕННЯ МАРШРУТНИХ ТОЧОК ---
     if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) {
