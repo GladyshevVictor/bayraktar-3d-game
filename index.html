@@ -460,7 +460,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     let targetAngle = 0; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
 const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30 км/год)
     const TURN_SPEED_LIMIT_MPS = 2.8; // <<< ДОДАЙТЕ ЦЮ КОНСТАНТУ (10 км/год)
-    // --- ПЕРЕВІРКА КОНТАКТУ ВСІХ КОЛІС ІЗ ЗЕМЛЕЮ ---
+  // --- ПЕРЕВІРКА КОНТАКТУ ВСІХ КОЛІС ІЗ ЗЕМЛЕЮ ---
     let noseGearOnGround = false;
     let mainWheelL_onGround = false;
     let mainWheelR_onGround = false;
@@ -491,10 +491,12 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         mainWheel.getWorldPosition(wheelWorldPosition);
         if (wheelWorldPosition.y <= wheelRadius +0.1) {
             mainWheel_onGround = true;
-   }
-    const onGround = timeOffGround < onGroundGracePeriod;
+        }
+    } // <-- Дужка має закривати `if (mainWheel)` саме тут.
 
-    // ▼▼▼ ВСТАВЛЯТИ ПОТРІБНО САМЕ СЮДИ ▼▼▼
+    // ВИЗНАЧЕННЯ ПЕРЕБУВАННЯ НА ЗЕМЛІ (ця частина вже є, але тепер вона буде працювати правильно)
+    const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround || mainWheel_onGround;
+    
     // --- Керування видимістю маршрутів ---
     if (taxiwayLine) {
         taxiwayLine.visible = onGround; // Лінія руління видима тільки на землі
@@ -508,10 +510,13 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
             wp.visible = !onGround; // Кільця-точки видимі тільки в повітрі
         });
     }
-    // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
+
+    // Автоматично вимикаємо режим руління, якщо літак злетів
+    if (!onGround && gameState.isTaxiMode) {
+        gameState.isTaxiMode = false;
+        updateTaxiModeHUD(); // Оновлюємо HUD
     }
    
-
     // ВИЗНАЧЕННЯ ПЕРЕБУВАННЯ НА ЗЕМЛІ (виправлено та переміщено сюди)
     const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround || mainWheel_onGround;
     // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
