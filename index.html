@@ -575,7 +575,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         // Застосовуємо розрахований targetAngle до стійки шасі
         if (noseGear) {
             const steeringSpeed = 1.0 * deltaTime;
-            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
+            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.z, targetAngle, steeringSpeed);
         }
 
         if (gameState.speed > 1 && noseGear) {
@@ -659,7 +659,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         // Автоматичне гальмування в поворотах, якщо швидкість завелика
         const isTurning = Math.abs(targetAngle) > 0.05; // Перевіряємо, чи є команда на поворот
         if (isTurning && gameState.speed > TURN_SPEED_LIMIT_MPS) {
-            autoBrakeForce = BRAKING_FORCE * 0.8; // Застосовуємо 80% сили гальм
+            autoBrakeForce = BRAKING_FORCE * 0.6; // Застосовуємо 60% сили гальм
             console.log("Автоматичне гальмування в повороті!");
         }
     }
@@ -712,36 +712,36 @@ if (gameState.isTaxiMode && onGround) {
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
     bayraktarModel.position.y += gameState.vSpeed * deltaTime;
 
-       // --- КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ ---
-    if (propellerMesh) propellerMesh.visible = false;
-    if (mainWheel) mainWheel.visible = false;
-    if (mainWheelL) mainWheelL.visible = false;
-    if (mainWheelR) mainWheelR.visible = false;
+       // --- НОВА КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ (БЕЗ BOUNDINGBOX) ---
+    let lowestWheelY = Infinity;
+    const tempVector = new THREE.Vector3();
 
-    bayraktarModel.updateMatrixWorld(true);
-    modelBoundingBox.setFromObject(bayraktarModel);
-
-    if (propellerMesh) propellerMesh.visible = true;
-    if (mainWheel) mainWheel.visible = true;
-    if (mainWheelL) mainWheelL.visible = true;
-    if (mainWheelR) mainWheelR.visible = true;
-
-    // Перевіряємо, чи потрібно коректувати позицію
-    if (modelBoundingBox.min.y < 0) {
-        const correctionAmount = -modelBoundingBox.min.y;
-
-        // "ЗАПОБІЖНИК": Ігноруємо аномально великі корекції, які є глюком.
-        // Стрибок більше ніж на 1 метр за кадр - це неможливо.
-        if (correctionAmount < 0.2) {
-            bayraktarModel.position.y += correctionAmount; // Застосовуємо тільки розумну корекцію
-        } else {
-            // Якщо корекція занадто велика, логуємо помилку і нічого не робимо
-            console.error("Виявлено аномальну корекцію висоти, ігнорується:", correctionAmount);
+    // Функція для перевірки положення одного колеса
+    const checkWheelGroundPosition = (wheelMesh) => {
+        if (wheelMesh) {
+            wheelMesh.getWorldPosition(tempVector);
+            // Знаходимо найнижчу точку колеса, враховуючи його радіус
+            if (tempVector.y < lowestWheelY) {
+                lowestWheelY = tempVector.y;
+            }
         }
+    };
 
-        // В будь-якому випадку, якщо ми торкаємось землі, гасимо вертикальну швидкість
-        gameState.vSpeed = 0;
+    // Перевіряємо всі колеса, щоб знайти найнижче
+    checkWheelGroundPosition(noseGear);
+    checkWheelGroundPosition(mainWheel);
+    checkWheelGroundPosition(mainWheelL);
+    checkWheelGroundPosition(mainWheelR);
+
+    // Розраховуємо, наскільки найнижче колесо провалилося під землю
+    const groundPenetration = (lowestWheelY - wheelRadius);
+    
+    // Якщо є провалювання, коректуємо позицію всього літака
+    if (groundPenetration < 0) {
+        bayraktarModel.position.y -= groundPenetration;
+        gameState.vSpeed = 0; // Гасимо вертикальну швидкість при контакті
     }
+
     gameState.altitude = bayraktarModel.position.y;
    // ▼▼▼ ДОДАЙТЕ ЦЕЙ НОВИЙ БЛОК ▼▼▼
     // Додаткова логіка "приклеювання" до землі.
