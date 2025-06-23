@@ -42,6 +42,7 @@
     <div id="cameraModeIndicator">Режим камери: <span id="currentCameraModeName">Слідування</span></div>
     <div id="aerodromeIndicator">Аеродром: <span id="aerodromeArrow">↑</span> (<span id="aerodromeDistance">--</span> м)</div>
    <div>Режим руління: <span id="taxiModeStatus">Вимкнено</span></div>
+  <div>Автопілот руління: <span id="autopilotStatus">Вимкнено</span></div
     <div id="waypointIndicator">Наступна точка: <span id="nextWaypointInfo">--</span></div>
 </div>
 <div id="dashboard">
@@ -96,17 +97,21 @@
   let aerodromeArrowElement, aerodromeDistanceElement;  
   let nextWaypointInfoElement; // Для HUD маршруту
   let taxiModeStatusElement; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+  let autopilotStatusElement; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
 
   // --- НАЛАШТУВАННЯ МАРШРУТУ ---
   let waypoints = [];  
   let waypointCoordinates = [];  
-  let currentWaypointIndex = 0;  
+  let currentWaypointIndex = 0; 
+  let currentTaxiwayPointIndex = 0; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
   const WAYPOINT_REACH_THRESHOLD = 80; // Збільшено для легшого проходження
+  const TAXIWAY_POINT_REACH_THRESHOLD = 5; // <<< ДОДАЙТЕ ЦЮ КОНСТАНТУ
   let waypointLine = null;  
    // ▼▼▼ ДОДАЙТЕ ЦІ ДВА РЯДКИ ▼▼▼
   let taxiwayPoints = [];   // Координати точок для руління
   let taxiwayLine = null;    // Об'єкт лінії для руління
   // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
+  
   const WAYPOINT_COLOR_PASSED = 0x808080; // Сірий
   const WAYPOINT_COLOR_CURRENT = 0xffff00; // Жовтий
   const WAYPOINT_COLOR_NEXT = 0x00ff00;     // Зелений
@@ -126,7 +131,7 @@
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
   const aerodromePosition = new THREE.Vector3(0, 0, 0);  
-  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false, isTaxiMode: false };
+  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false, isTaxiMode: false, isAutopilotOn: false };
   const keysPressed = {};
   const CAMERA_MODES = { FOLLOW: 0, TAIL_VIEW: 1, ORBIT: 2, };
   const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста (на гвинт)", "Орбітальна"];
@@ -303,6 +308,7 @@ function setupEventListeners() {
     aerodromeDistanceElement = document.getElementById('aerodromeDistance');
     nextWaypointInfoElement = document.getElementById('nextWaypointInfo');
     taxiModeStatusElement = document.getElementById('taxiModeStatus'); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+    autopilotStatusElement = document.getElementById('autopilotStatus'); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
@@ -426,6 +432,8 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     updateAerodromeIndicator();
     updateWaypointHUD(); // Початкове оновлення HUD маршруту
     animate();
+    updateTaxiModeHUD(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+    createTaxiwayVisuals(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
     
   }
   let timeRHeld = 0; // <--- ОСЬ ЦЕЙ РЯДОК ПОТРІБНО ДОДАТИ
@@ -762,6 +770,22 @@ if (gameState.isTaxiMode && onGround) {
     const rpmEl = document.getElementById('rpm'); if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
     const scoreEl = document.getElementById('score'); if (scoreEl) scoreEl.textContent = gameState.score;
   }
+ function updateAutopilotHUD() {
+    if (!autopilotStatusElement) return;
+    if (gameState.isTaxiMode) {
+        autopilotStatusElement.style.display = 'block';
+        if (gameState.isAutopilotOn) {
+            autopilotStatusElement.textContent = "Увімкнено";
+            autopilotStatusElement.style.color = "#00ff00";
+        } else {
+            autopilotStatusElement.textContent = "Вимкнено";
+            autopilotStatusElement.style.color = "white";
+        }
+    } else {
+        autopilotStatusElement.style.display = 'none';
+    }
+}
+// ▲▲▲ КІНЕЦЬ НОВОЇ ФУНКЦІЇ ▲▲▲
   // ▼▼▼ ДОДАЙТЕ ЦЮ ВІДСУТНЮ ФУНКЦІЮ ▼▼▼
 function createTaxiwayVisuals() {
     if (taxiwayLine) {
@@ -844,8 +868,7 @@ function updateTaxiModeHUD() {
     updateWaypointLine(); // Оновлюємо лінію маршруту в кожному кадрі
     updateWaypointHUD();  // Оновлюємо HUD маршруту
     renderer.render(scene, camera);
-    updateTaxiModeHUD(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
-    createTaxiwayVisuals(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+   
   }
 
   init();  
