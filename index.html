@@ -131,7 +131,7 @@
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
   const aerodromePosition = new THREE.Vector3(0, 0, 0);  
-  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false, isTaxiMode: false, isAutopilotOn: false };
+  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false, isTaxiMode: false, isAutopilotOn: false, autopilotState: 'inactive' };
   const keysPressed = {};
   const CAMERA_MODES = { FOLLOW: 0, TAIL_VIEW: 1, ORBIT: 2, };
   const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста (на гвинт)", "Орбітальна"];
@@ -242,8 +242,19 @@ function setupEventListeners() {
         // Миттєва дія: перемикання автопілота руління
         if (event.code === 'KeyP') {
             if (gameState.isTaxiMode) {
-                gameState.isAutopilotOn = !gameState.isAutopilotOn;
+                if (!gameState.isAutopilotOn) {
+                    // Якщо автопілот вимкнений - генеруємо маршрут і вмикаємо
+                    generateTurnaroundPath();
+                    gameState.autopilotState = 'turnaround'; // <<< Встановлюємо початковий стан
+                    gameState.isAutopilotOn = true;
+                } else {
+                    // Якщо вже увімкнений - примусово вимикаємо і чистимо все
+                    gameState.isAutopilotOn = false;
+                    gameState.autopilotState = 'inactive';
+                    dynamicPath = [];
+                }
             }
+      
         }
     }); // <-- Закриваюча дужка для addEventListener
       
@@ -528,44 +539,70 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         if (keysPressed['KeyD'] || keysPressed['в']) rollChange = -rotationSpeedInput;
     }
     
-    // --- КЕРУВАННЯ РИСКАННЯМ (ПОВОРОТ СТІЙКИ НА ЗЕМЛІ / РУЛЬ У ПОВІТРІ) ---
+      // --- КЕРУВАННЯ РИСКАННЯМ (ПОВОРОТ СТІЙКИ НА ЗЕМЛІ / РУЛЬ У ПОВІТРІ) ---
     if (onGround) {
-         targetAngle = 0; // Цільовий кут для стійки шасі
+        targetAngle = 0;
 
-        if (gameState.isAutopilotOn && taxiwayPoints.length > currentTaxiwayPointIndex) {
+        if (gameState.isAutopilotOn) {
             // --- РЕЖИМ АВТОПІЛОТА ---
-            const currentPos = bayraktarModel.position;
-            let targetPos = taxiwayPoints[currentTaxiwayPointIndex];
+            let targetPoints = [];
+            let currentTargetIndex = 0;
 
-            // Перевірка, чи ми досягли поточної точки
-            if (currentPos.distanceTo(targetPos) < TAXIWAY_POINT_REACH_THRESHOLD) {
-                currentTaxiwayPointIndex++;
-                console.log(`Досягнуто точки руління, наступна: ${currentTaxiwayPointIndex}`);
-                // Перевірка, чи не закінчився маршрут
-                if (currentTaxiwayPointIndex >= taxiwayPoints.length) {
-                    console.log("Маршрут руління завершено.");
-                    gameState.isAutopilotOn = false; // Вимикаємо автопілот
-                }
+            // Визначаємо, за яким маршрутом слідувати: динамічним чи статичним
+            if (gameState.autopilotState === 'turnaround') {
+                targetPoints = dynamicPath;
+                currentTargetIndex = currentPathPointIndex;
+            } else if (gameState.autopilotState === 'path_following') {
+                targetPoints = taxiwayPoints;
+                currentTargetIndex = currentPathPointIndex;
             }
 
-            // Оновлюємо ціль, якщо індекс змінився
-            if (currentTaxiwayPointIndex < taxiwayPoints.length) {
-                targetPos = taxiwayPoints[currentTaxiwayPointIndex];
+            if (targetPoints.length > currentTargetIndex) {
+                const currentPos = bayraktarModel.position;
+                let targetPos = targetPoints[currentTargetIndex];
 
-                const directionToTarget = new THREE.Vector3().subVectors(targetPos, currentPos).normalize();
-                const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
+                // Перевірка, чи досягнуто точки
+                if (currentPos.distanceTo(targetPos) < TAXIWAY_POINT_REACH_THRESHOLD) {
+                    currentPathPointIndex++;
+                    console.log(`Досягнуто точки ${currentTargetIndex}, наступна: ${currentPathPointIndex}`);
+                    
+                    // Перевіряємо, чи завершено поточне завдання
+                    if (currentPathPointIndex >= targetPoints.length) {
+                        if (gameState.autopilotState === 'turnaround') {
+                            // Якщо завершили розворот, перемикаємось на слідування маршрутом
+                            console.log("Маневр розвороту завершено. Перехід до слідування маршрутом.");
+                            gameState.autopilotState = 'path_following';
+                            currentPathPointIndex = 0; // Починаємо слідувати за статичним маршрутом з першої точки
+                            dynamicPath = []; 
+                        } else if (gameState.autopilotState === 'path_following') {
+                            // Якщо завершили основний маршрут, вимикаємо автопілот
+                            console.log("Маршрут руління завершено.");
+                            gameState.isAutopilotOn = false;
+                            gameState.autopilotState = 'inactive';
+                        }
+                    }
+                }
                 
-                let angle = forwardVector.angleTo(directionToTarget);
-                const cross = new THREE.Vector3().crossVectors(forwardVector, directionToTarget);
-                if (cross.y < 0) { angle = -angle; }
-                
-                const maxSteeringAngle = Math.PI / 6;
-                targetAngle = THREE.MathUtils.clamp(angle, -maxSteeringAngle, maxSteeringAngle);
+                // Розраховуємо кут до наступної точки (якщо вона є)
+                if (currentPathPointIndex < targetPoints.length) {
+                    targetPos = targetPoints[currentPathPointIndex];
+                    const directionToTarget = new THREE.Vector3().subVectors(targetPos, currentPos).normalize();
+                    const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
+                    let angle = forwardVector.angleTo(directionToTarget);
+                    const cross = new THREE.Vector3().crossVectors(forwardVector, directionToTarget);
+                    if (cross.y < 0) { angle = -angle; }
+                    const maxSteeringAngle = THREE.MathUtils.degToRad(35);
+                    targetAngle = THREE.MathUtils.clamp(angle, -maxSteeringAngle, maxSteeringAngle);
+                }
+            } else {
+                 // Якщо точок немає, а автопілот все ще увімкнений - вимикаємо
+                 gameState.isAutopilotOn = false;
+                 gameState.autopilotState = 'inactive';
             }
 
         } else {
             // --- РУЧНИЙ РЕЖИМ ---
-            const maxSteeringAngle = Math.PI / 6.5;
+            const maxSteeringAngle = THREE.MathUtils.degToRad(25);
             if (keysPressed['KeyQ'] || keysPressed['й']) {
                 targetAngle = maxSteeringAngle;
             } else if (keysPressed['KeyE'] || keysPressed['у']) {
@@ -573,15 +610,15 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
             }
         }
         
-        // Застосовуємо розрахований targetAngle до стійки шасі
+        // --- ЗАГАЛЬНА ЛОГІКА ЗАСТОСУВАННЯ ПОВОРОТУ (для обох режимів) ---
         if (noseGear) {
             const steeringSpeed = 1.0 * deltaTime;
-            noseGear.rotation.z = THREE.MathUtils.lerp(noseGear.rotation.z, targetAngle, steeringSpeed);
+            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
         }
 
         if (gameState.speed > 1 && noseGear) {
-            const turnFactor = Math.min(gameState.speed / 25, 1.0);
-            const bodyTurnSpeed = noseGear.rotation.z * turnFactor * deltaTime;
+            const turnFactor = Math.min(gameState.speed / 5, 1.0);
+            const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
             bayraktarModel.rotateY(bodyTurnSpeed);
         }
         
