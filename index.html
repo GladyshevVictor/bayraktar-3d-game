@@ -239,10 +239,17 @@ function setupEventListeners() {
                 gameState.isTaxiMode = !gameState.isTaxiMode;
                 updateTaxiModeHUD(); // Миттєво оновлюємо індикатор
             }
+        // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
+        // Миттєва дія: перемикання автопілота руління
+        if (event.code === 'KeyP') {
+            // Дозволяємо перемикати тільки в режимі руління
+            if (gameState.isTaxiMode) {
+                gameState.isAutopilotOn = !gameState.isAutopilotOn;
+            }
         }
-      
+        // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
     });
-
+      
     // Обробник відпускання клавіш (тут вся логіка старту/ракети)
     document.addEventListener('keyup', (event) => {
         const isRKey = event.code === 'KeyR' || event.key.toLowerCase() === 'к';
