@@ -753,7 +753,8 @@ if (gameState.isTaxiMode && onGround) {
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
     bayraktarModel.position.y += gameState.vSpeed * deltaTime;
 
-       // --- НОВА КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ (БЕЗ BOUNDINGBOX) ---
+      // ▼▼▼ ВСТАВТЕ ЦЕЙ ВІДСУТНІЙ БЛОК ▼▼▼
+    // --- НОВА КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ (БЕЗ BOUNDINGBOX) ---
     let lowestWheelY = Infinity;
     const tempVector = new THREE.Vector3();
 
@@ -761,7 +762,6 @@ if (gameState.isTaxiMode && onGround) {
     const checkWheelGroundPosition = (wheelMesh) => {
         if (wheelMesh) {
             wheelMesh.getWorldPosition(tempVector);
-            // Знаходимо найнижчу точку колеса, враховуючи його радіус
             if (tempVector.y < lowestWheelY) {
                 lowestWheelY = tempVector.y;
             }
@@ -784,6 +784,7 @@ if (gameState.isTaxiMode && onGround) {
     }
 
     gameState.altitude = bayraktarModel.position.y;
+    // ▲▲▲ КІНЕЦЬ ВІДСУТНЬОГО БЛОКУ ▲▲▲
    // ▼▼▼ ДОДАЙТЕ ЦЕЙ НОВИЙ БЛОК ▼▼▼
     // Додаткова логіка "приклеювання" до землі.
     // Вона не дає з'явитися вертикальній швидкості від мікровідривів.
