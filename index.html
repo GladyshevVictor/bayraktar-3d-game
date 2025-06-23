@@ -648,7 +648,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
        if (gameState.speed > 0.1 && noseGear) { // Починаємо поворот навіть на мінімальній швидкості
         // Постійний коефіцієнт, що визначає, наскільки швидко тіло слідує за стійкою.
         // Можна налаштувати: 0.2 - плавно, 0.8 - різко.
-        const turnFactor = 0.5; 
+        const turnFactor = 0.2; 
         
         const bodyTurnSpeed = noseGear.rotation.z * turnFactor * deltaTime;
         bayraktarModel.rotateZ(bodyTurnSpeed);
