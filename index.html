@@ -439,6 +439,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
         bayraktarModel = new THREE.Mesh(placeholderGeo, placeholderMat); bayraktarModel.position.set(0, 0.5, 0);  
         scene.add(bayraktarModel);
         if (bayraktarModel) orbitControls.target.copy(bayraktarModel.position);
+        createTaxiwayVisuals(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
       }
     );
     
@@ -449,7 +450,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     updateWaypointHUD(); // Початкове оновлення HUD маршруту
     animate();
     updateTaxiModeHUD(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
-    createTaxiwayVisuals(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+   
     
   }
   let timeRHeld = 0; // <--- ОСЬ ЦЕЙ РЯДОК ПОТРІБНО ДОДАТИ
@@ -614,7 +615,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         // --- ЗАГАЛЬНА ЛОГІКА ЗАСТОСУВАННЯ ПОВОРОТУ (для обох режимів) ---
         if (noseGear) {
             const steeringSpeed = 1.0 * deltaTime;
-            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
+            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.z, targetAngle, steeringSpeed);
         }
 
         if (gameState.speed > 1 && noseGear) {
