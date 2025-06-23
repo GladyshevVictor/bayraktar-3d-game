@@ -41,6 +41,8 @@
     <div>Цілі знищено: <span id="score">0</span></div>
     <div id="cameraModeIndicator">Режим камери: <span id="currentCameraModeName">Слідування</span></div>
     <div id="aerodromeIndicator">Аеродром: <span id="aerodromeArrow">↑</span> (<span id="aerodromeDistance">--</span> м)</div>
+   <div>Режим руління: <span id="taxiModeStatus">Вимкнено</span></div>
+  <div>Автопілот руління: <span id="autopilotStatus">Вимкнено</span></div>
     <div id="waypointIndicator">Наступна точка: <span id="nextWaypointInfo">--</span></div>
 </div>
 <div id="dashboard">
@@ -94,13 +96,22 @@
   let fuelNeedle, fuelValueDigital;  
   let aerodromeArrowElement, aerodromeDistanceElement;  
   let nextWaypointInfoElement; // Для HUD маршруту
+  let taxiModeStatusElement; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+  let autopilotStatusElement; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
 
   // --- НАЛАШТУВАННЯ МАРШРУТУ ---
   let waypoints = [];  
   let waypointCoordinates = [];  
-  let currentWaypointIndex = 0;  
+  let currentWaypointIndex = 0; 
+  let currentTaxiwayPointIndex = 0; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
   const WAYPOINT_REACH_THRESHOLD = 80; // Збільшено для легшого проходження
+  const TAXIWAY_POINT_REACH_THRESHOLD = 5; // <<< ДОДАЙТЕ ЦЮ КОНСТАНТУ
   let waypointLine = null;  
+   // ▼▼▼ ДОДАЙТЕ ЦІ ДВА РЯДКИ ▼▼▼
+  let taxiwayPoints = [];   // Координати точок для руління
+  let taxiwayLine = null;    // Об'єкт лінії для руління
+  // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
+  
   const WAYPOINT_COLOR_PASSED = 0x808080; // Сірий
   const WAYPOINT_COLOR_CURRENT = 0xffff00; // Жовтий
   const WAYPOINT_COLOR_NEXT = 0x00ff00;     // Зелений
@@ -120,7 +131,7 @@
   const MAX_PITCH_ANGLE_RAD = THREE.MathUtils.degToRad(15);
   const MAX_ROLL_ANGLE_RAD = THREE.MathUtils.degToRad(25);
   const aerodromePosition = new THREE.Vector3(0, 0, 0);  
-  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false };
+  const gameState = { fuel: 100, altitude: 0, pitch: 0, roll: 0, speed: 0, heading: 0, vSpeed: 0, throttle: 0, rpm: 0, score: 0, maxSpeed: 150, engineOn: false, isTaxiMode: false, isAutopilotOn: false };
   const keysPressed = {};
   const CAMERA_MODES = { FOLLOW: 0, TAIL_VIEW: 1, ORBIT: 2, };
   const CAMERA_MODE_NAMES = ["Слідування", "Вигляд з хвоста (на гвинт)", "Орбітальна"];
@@ -219,11 +230,26 @@ function setupEventListeners() {
                  orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
             }
         }
-    });
 
-    // Обробник відпускання клавіш (тут вся логіка старту/ракети)
+        // Миттєва дія: перемикання режиму руління
+        if (event.code === 'KeyT') {
+            if (gameState.altitude < 1.0) { 
+                gameState.isTaxiMode = !gameState.isTaxiMode;
+                updateTaxiModeHUD();
+            }
+        }
+        
+        // Миттєва дія: перемикання автопілота руління
+        if (event.code === 'KeyP') {
+            if (gameState.isTaxiMode) {
+                gameState.isAutopilotOn = !gameState.isAutopilotOn;
+            }
+        }
+    }); // <-- Закриваюча дужка для addEventListener
+      
+    // Обробник відпускання клавіш
     document.addEventListener('keyup', (event) => {
-        const isRKey = event.code === 'KeyR' || event.key.toLowerCase() === 'к';
+    const isRKey = event.code === 'KeyR' || event.key.toLowerCase() === 'к';
 
         // --- Логіка для клавіші R/К ---
         if (isRKey) {
@@ -240,9 +266,9 @@ function setupEventListeners() {
             // в updateGameState, і ми не хочемо його знову запускати.
         }
 
-        // --- Логіка для клавіші Space (Ракета) ---
-        if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
-            console.log("Запуск ракети!");
+         // --- Логіка для клавіші Space (Ракета) ---
+        if (event.code === 'Space' && gameState.altitude >= 500 && bayraktarModel) { // <<< ОСЬ ТУТ ЗМІНА
+            console.log("Запуск ракети! Висота понад 500 м."); // Можна оновити лог для ясності
             if (missileSound) {
                 missileSound.currentTime = 0;
                 missileSound.play().catch(e => console.error(e));
@@ -285,6 +311,8 @@ function setupEventListeners() {
     aerodromeArrowElement = document.getElementById('aerodromeArrow');
     aerodromeDistanceElement = document.getElementById('aerodromeDistance');
     nextWaypointInfoElement = document.getElementById('nextWaypointInfo');
+    taxiModeStatusElement = document.getElementById('taxiModeStatus'); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+    autopilotStatusElement = document.getElementById('autopilotStatus'); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); directionalLight.position.set(100, 100, 50); directionalLight.castShadow = true; scene.add(directionalLight);
@@ -339,8 +367,15 @@ function setupEventListeners() {
         new THREE.Vector3(0, 150, 500)       // Точка для повернення ближче до аеродрому
     ];
     createWaypointVisuals();
-    // === ===
-
+// ▼▼▼ ДОДАЙТЕ ЦЕЙ НОВИЙ БЛОК ▼▼▼
+    // === ВИЗНАЧЕННЯ МАРШРУТУ РУЛІННЯ (ТАКСІ) ===
+    taxiwayPoints = [
+        new THREE.Vector3(0, 0.1, 0),      // Початкова точка
+        new THREE.Vector3(0, 0.1, -1400),   // Рух по прямій до кінця смуги
+        new THREE.Vector3(50, 0.1, -1450),  // Поворот
+        new THREE.Vector3(50, 0.1, -1480)   // Місце стоянки
+    ];
+    // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
     const gltfLoader = new GLTFLoader();
     const loadingDiv = document.getElementById('loading'); const progressSpan = document.getElementById('progress');
     gltfLoader.load( 'bayraktar.glb',
@@ -401,19 +436,24 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     updateAerodromeIndicator();
     updateWaypointHUD(); // Початкове оновлення HUD маршруту
     animate();
+    updateTaxiModeHUD(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+    createTaxiwayVisuals(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+    
   }
   let timeRHeld = 0; // <--- ОСЬ ЦЕЙ РЯДОК ПОТРІБНО ДОДАТИ
   const timeToStopEngine = 1; // <--- ДОДАЙТЕ ЦЕЙ РЯДОК (1 - це 1 секунди, можна змінити)
  function updateGameState(deltaTime) {
     if (!bayraktarModel) return;
-
+    let targetAngle = 0; // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30 км/год)
+    const TURN_SPEED_LIMIT_MPS = 4.2; // <<< ДОДАЙТЕ ЦЮ КОНСТАНТУ (15 км/год)
     // --- ПЕРЕВІРКА КОНТАКТУ ВСІХ КОЛІС ІЗ ЗЕМЛЕЮ ---
     let noseGearOnGround = false;
     let mainWheelL_onGround = false;
     let mainWheelR_onGround = false;
     let mainWheel_onGround = false; 
 
-    const wheelRadius = 0.4; 
+    const wheelRadius = 0.6; 
     const wheelWorldPosition = new THREE.Vector3();
 
     if (noseGear) { 
@@ -443,6 +483,14 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
 
     // ВИЗНАЧЕННЯ ПЕРЕБУВАННЯ НА ЗЕМЛІ (виправлено та переміщено сюди)
     const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround || mainWheel_onGround;
+    // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
+    // Автоматично вимикаємо режим руління, якщо літак злетів
+    if (!onGround && gameState.isTaxiMode) {
+        gameState.isTaxiMode = false;
+    }
+    // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
+    // ▼▼▼ РЯДОК ДЛЯ ДІАГНОСТИКИ 1 ▼▼▼
+    console.log(`onGround: ${onGround}, vSpeed: ${gameState.vSpeed.toFixed(2)}, altitude: ${gameState.altitude.toFixed(2)}`);
 
     // --- Логіка запуску/зупинки двигуна утриманням R ---
     if (keysPressed['KeyR'] || keysPressed['к']) {
@@ -466,7 +514,8 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     const rotationSpeedInput = 1.5 * deltaTime;
     const thrustAcceleration = 15; 
     const dragFactor = 0.008; 
-    const baseLiftFactor = 0.018;
+    const baseLiftFactor = 0.005;
+   const brakingRollStabilization = 0.1;
 
     // --- Управління тангажем, креном, рисканням ---
     let pitchChange = 0, rollChange = 0, yawChange = 0;
@@ -481,28 +530,66 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     
     // --- КЕРУВАННЯ РИСКАННЯМ (ПОВОРОТ СТІЙКИ НА ЗЕМЛІ / РУЛЬ У ПОВІТРІ) ---
     if (onGround) {
-        if (noseGear) {
-            const steeringSpeed = 2.0 * deltaTime;
-            const maxSteeringAngle = Math.PI / 6;
-            let targetAngle = 0;
+         targetAngle = 0; // Цільовий кут для стійки шасі
 
+        if (gameState.isAutopilotOn && taxiwayPoints.length > currentTaxiwayPointIndex) {
+            // --- РЕЖИМ АВТОПІЛОТА ---
+            const currentPos = bayraktarModel.position;
+            let targetPos = taxiwayPoints[currentTaxiwayPointIndex];
+
+            // Перевірка, чи ми досягли поточної точки
+            if (currentPos.distanceTo(targetPos) < TAXIWAY_POINT_REACH_THRESHOLD) {
+                currentTaxiwayPointIndex++;
+                console.log(`Досягнуто точки руління, наступна: ${currentTaxiwayPointIndex}`);
+                // Перевірка, чи не закінчився маршрут
+                if (currentTaxiwayPointIndex >= taxiwayPoints.length) {
+                    console.log("Маршрут руління завершено.");
+                    gameState.isAutopilotOn = false; // Вимикаємо автопілот
+                }
+            }
+
+            // Оновлюємо ціль, якщо індекс змінився
+            if (currentTaxiwayPointIndex < taxiwayPoints.length) {
+                targetPos = taxiwayPoints[currentTaxiwayPointIndex];
+
+                const directionToTarget = new THREE.Vector3().subVectors(targetPos, currentPos).normalize();
+                const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
+                
+                let angle = forwardVector.angleTo(directionToTarget);
+                const cross = new THREE.Vector3().crossVectors(forwardVector, directionToTarget);
+                if (cross.y < 0) { angle = -angle; }
+                
+                const maxSteeringAngle = Math.PI / 5;
+                targetAngle = THREE.MathUtils.clamp(angle, -maxSteeringAngle, maxSteeringAngle);
+            }
+
+        } else {
+            // --- РУЧНИЙ РЕЖИМ ---
+            const maxSteeringAngle = Math.PI / 6.5;
             if (keysPressed['KeyQ'] || keysPressed['й']) {
                 targetAngle = maxSteeringAngle;
             } else if (keysPressed['KeyE'] || keysPressed['у']) {
                 targetAngle = -maxSteeringAngle;
             }
-
-            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
-
-            if (gameState.speed > 1) {
-                const turnFactor = Math.min(gameState.speed / 15, 1.0);
-                const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
-                bayraktarModel.rotateY(bodyTurnSpeed);
-            }
         }
+        
+        // Застосовуємо розрахований targetAngle до стійки шасі
+        if (noseGear) {
+            const steeringSpeed = 1.0 * deltaTime;
+            noseGear.rotation.z = THREE.MathUtils.lerp(noseGear.rotation.z, targetAngle, steeringSpeed);
+        }
+
+        if (gameState.speed > 1 && noseGear) {
+            const turnFactor = Math.min(gameState.speed / 25, 1.0);
+            const bodyTurnSpeed = noseGear.rotation.z * turnFactor * deltaTime;
+            bayraktarModel.rotateZ(bodyTurnSpeed);
+        }
+        
         yawChange = 0;
     } else {
+        // --- КЕРУВАННЯ В ПОВІТРІ ---
         const yawEffectiveness = 1.0;
+        const rotationSpeedInput = 1.5 * deltaTime; // Поки що використовуємо стару змінну
         if (keysPressed['KeyQ'] || keysPressed['й']) yawChange = rotationSpeedInput * yawEffectiveness;
         if (keysPressed['KeyE'] || keysPressed['у']) yawChange = -rotationSpeedInput * yawEffectiveness;
 
@@ -510,10 +597,10 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
             noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, 0, 0.1);
         }
     }
-
     bayraktarModel.rotateX(pitchChange);
     bayraktarModel.rotateZ(rollChange);
-
+    bayraktarModel.rotateY(yawChange); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+   
     let currentPitch = bayraktarModel.rotation.x; let currentRoll = bayraktarModel.rotation.z;
     while (currentPitch > Math.PI) currentPitch -= 2 * Math.PI; while (currentPitch < -Math.PI) currentPitch += 2 * Math.PI;
     while (currentRoll > Math.PI) currentRoll -= 2 * Math.PI; while (currentRoll < -Math.PI) currentRoll += 2 * Math.PI;
@@ -523,16 +610,16 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     else if (currentRoll < -MAX_ROLL_ANGLE_RAD) bayraktarModel.rotation.z = -MAX_ROLL_ANGLE_RAD;
 
     // --- КЕРУВАННЯ ГАЗОМ (Throttle) ---
-    if (gameState.engineOn) {
+  if (gameState.engineOn) {
+        // Встановлюємо максимальну тягу залежно від режиму
+        const maxThrottle = gameState.isTaxiMode ? 0.18 : 1.0; // 20% тяги для руління
+
         if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) {
-            gameState.throttle = Math.min(1, gameState.throttle + 0.5 * deltaTime);
+            gameState.throttle = Math.min(maxThrottle, gameState.throttle + 0.5 * deltaTime);
         }
         if (keysPressed['ControlLeft'] || keysPressed['ControlRight']) {
             gameState.throttle = Math.max(0, gameState.throttle - 0.5 * deltaTime);
         }
-    }
-    if (!gameState.engineOn && gameState.throttle > 0) {
-        gameState.throttle = 0;
     }
 
     // --- ОБЕРТАННЯ ГВИНТА ---
@@ -559,17 +646,35 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     // 3. Гальма (Brakes) і Тертя кочення (Friction)
     let currentBrakingForceApplied = 0;
     let frictionForce = 0;
+    let autoBrakeForce = 0; // Нова змінна для авто-гальм
+
     if (onGround) {
-        if (keysPressed['Space']) { // Активне гальмування пробілом
+        // Гальма, які вмикає гравець
+        if (keysPressed['Space']) {
             currentBrakingForceApplied = BRAKING_FORCE;
-        } else { // Пасивне тертя кочення
-            frictionForce = GROUND_FRICTION_FORCE;
+        }
+        
+        // Пасивне тертя кочення
+        frictionForce = GROUND_FRICTION_FORCE;
+       // ▼▼▼ ДОДАЙТЕ ЦЕЙ РЯДОК СТАБІЛІЗАЦІЇ ▼▼▼
+            // Активна стабілізація крену під час гальмування, щоб не перекидатися
+            bayraktarModel.rotation.z = THREE.MathUtils.lerp(bayraktarModel.rotation.z, 0, brakingRollStabilization);
+
+        // Автоматичне гальмування в поворотах, якщо швидкість завелика
+        const isTurning = Math.abs(targetAngle) > 0.05; // Перевіряємо, чи є команда на поворот
+        if (isTurning && gameState.speed > TURN_SPEED_LIMIT_MPS) {
+            autoBrakeForce = BRAKING_FORCE * 0.5; // Застосовуємо 50% сили гальм
+            console.log("Автоматичне гальмування в повороті!");
         }
     }
-
     // 4. Зміна горизонтальної швидкості
-    gameState.speed += (actualThrust - drag - currentBrakingForceApplied - frictionForce) * deltaTime;
+    gameState.speed += (actualThrust - drag - currentBrakingForceApplied - frictionForce - autoBrakeForce) * deltaTime;
     gameState.speed = Math.max(0, gameState.speed);
+   // ▼▼▼ ДОДАЙТЕ ЦЕЙ ВІДСУТНІЙ БЛОК ▼▼▼
+if (gameState.isTaxiMode && onGround) {
+    gameState.speed = Math.min(gameState.speed, MAX_TAXI_SPEED_MPS);
+}
+// ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
 
     // --- Розрахунок підйомної сили (Lift) і вертикальної швидкості ---
     let lift = 0;
@@ -604,31 +709,53 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     } else {
         gameState.vSpeed = 0;
     }
-
+  // ▼▼▼ РЯДОК ДЛЯ ДІАГНОСТИКИ 2 ▼▼▼
+    //console.log(`Applying movement -> vSpeed: ${gameState.vSpeed.toFixed(2)}, lift: ${lift.toFixed(2)}`);
     // --- Застосування руху ---
     const moveDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(bayraktarModel.quaternion);
     bayraktarModel.position.addScaledVector(moveDirection, gameState.speed * deltaTime);
     bayraktarModel.position.y += gameState.vSpeed * deltaTime;
 
-    // --- КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ ---
-    if (propellerMesh) propellerMesh.visible = false;
-    if (mainWheel) mainWheel.visible = false;
-    if (mainWheelL) mainWheelL.visible = false;
-    if (mainWheelR) mainWheelR.visible = false;
+       // --- НОВА КОРЕКЦІЯ ПОЛОЖЕННЯ НА ЗЕМЛІ (БЕЗ BOUNDINGBOX) ---
+    let lowestWheelY = Infinity;
+    const tempVector = new THREE.Vector3();
 
-    bayraktarModel.updateMatrixWorld(true);
-    modelBoundingBox.setFromObject(bayraktarModel);
+    // Функція для перевірки положення одного колеса
+    const checkWheelGroundPosition = (wheelMesh) => {
+        if (wheelMesh) {
+            wheelMesh.getWorldPosition(tempVector);
+            // Знаходимо найнижчу точку колеса, враховуючи його радіус
+            if (tempVector.y < lowestWheelY) {
+                lowestWheelY = tempVector.y;
+            }
+        }
+    };
 
-    if (propellerMesh) propellerMesh.visible = true;
-    if (mainWheel) mainWheel.visible = true;
-    if (mainWheelL) mainWheelL.visible = true;
-    if (mainWheelR) mainWheelR.visible = true;
+    // Перевіряємо всі колеса, щоб знайти найнижче
+    checkWheelGroundPosition(noseGear);
+    checkWheelGroundPosition(mainWheel);
+    checkWheelGroundPosition(mainWheelL);
+    checkWheelGroundPosition(mainWheelR);
 
-    if (modelBoundingBox.min.y < 0) {
-        bayraktarModel.position.y -= modelBoundingBox.min.y;
-        gameState.vSpeed = 0;
+    // Розраховуємо, наскільки найнижче колесо провалилося під землю
+    const groundPenetration = (lowestWheelY - wheelRadius);
+    
+    // Якщо є провалювання, коректуємо позицію всього літака
+    if (groundPenetration < 0) {
+        bayraktarModel.position.y -= groundPenetration;
+        gameState.vSpeed = 0; // Гасимо вертикальну швидкість при контакті
     }
+
     gameState.altitude = bayraktarModel.position.y;
+   // ▼▼▼ ДОДАЙТЕ ЦЕЙ НОВИЙ БЛОК ▼▼▼
+    // Додаткова логіка "приклеювання" до землі.
+    // Вона не дає з'явитися вертикальній швидкості від мікровідривів.
+    if (onGround && !allowTakeoff) {
+        if (gameState.vSpeed > 0) {
+            gameState.vSpeed = 0;
+        }
+    }
+    // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
     
     // --- ПЕРЕВІРКА ПРОХОДЖЕННЯ МАРШРУТНИХ ТОЧОК ---
     if (waypoints.length > 0 && currentWaypointIndex < waypointCoordinates.length) {
@@ -644,7 +771,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     }
     
     if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; gameState.fuel = Math.max(0, gameState.fuel); if (gameState.fuel === 0) { engineSound.pause(); engineSound.currentTime = 0; gameState.engineOn = false; gameState.throttle = 0; console.log("Пальне закінчилося. Двигун вимкнено."); } }
-    gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
+    gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 4100 + 1500) : 0;
     if (engineSound && gameState.engineOn) { if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); engineSound.volume = Math.max(0.1, gameState.throttle * 0.5); }  
     else if (engineSound && !engineSound.paused) { engineSound.pause(); }
     
@@ -710,7 +837,52 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     const rpmEl = document.getElementById('rpm'); if (rpmEl) rpmEl.textContent = gameState.rpm.toFixed(0) + ' об/хв';
     const scoreEl = document.getElementById('score'); if (scoreEl) scoreEl.textContent = gameState.score;
   }
-  
+ function updateAutopilotHUD() {
+    if (!autopilotStatusElement) return;
+    if (gameState.isTaxiMode) {
+        autopilotStatusElement.style.display = 'block';
+        if (gameState.isAutopilotOn) {
+            autopilotStatusElement.textContent = "Увімкнено";
+            autopilotStatusElement.style.color = "#00ff00";
+        } else {
+            autopilotStatusElement.textContent = "Вимкнено";
+            autopilotStatusElement.style.color = "white";
+        }
+    } else {
+        autopilotStatusElement.style.display = 'none';
+    }
+}
+// ▲▲▲ КІНЕЦЬ НОВОЇ ФУНКЦІЇ ▲▲▲
+  // ▼▼▼ ДОДАЙТЕ ЦЮ ВІДСУТНЮ ФУНКЦІЮ ▼▼▼
+function createTaxiwayVisuals() {
+    if (taxiwayLine) {
+        scene.remove(taxiwayLine);
+        taxiwayLine.geometry.dispose();
+        taxiwayLine.material.dispose();
+    }
+    
+    if (taxiwayPoints.length > 1) {
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(taxiwayPoints);
+        // Жовтий колір та більша товщина для кращої видимості на землі
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 }); 
+        taxiwayLine = new THREE.Line(lineGeometry, lineMaterial);
+        scene.add(taxiwayLine);
+    }
+}
+// ▲▲▲ КІНЕЦЬ НОВОЇ ФУНКЦІЇ ▲▲▲
+  // ▼▼▼ ДОДАЙТЕ ЦЮ НОВУ ФУНКЦІЮ ▼▼▼
+function updateTaxiModeHUD() {
+    if (!taxiModeStatusElement) return;
+
+    if (gameState.isTaxiMode) {
+        taxiModeStatusElement.textContent = "Увімкнено";
+        taxiModeStatusElement.style.color = "#00ff00"; // Зелений
+    } else {
+        taxiModeStatusElement.textContent = "Вимкнено";
+        taxiModeStatusElement.style.color = "white";
+    }
+}
+// ▲▲▲ КІНЕЦЬ НОВОЇ ФУНКЦІЇ ▲▲▲
   function updateFuelGauge() {
     if (!fuelNeedle || !fuelValueDigital) return;  
     const currentFuelLiters = (gameState.fuel / 100) * MAX_FUEL_LITERS;  
@@ -756,6 +928,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     if(bayraktarModel) {  
         updateGameState(deltaTime);
         updateCamera(deltaTime);
+     updateAutopilotHUD(); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК 
     }
     updateHUD();
     updateFuelGauge();  
@@ -763,6 +936,7 @@ if (node.name === "mainWheelR") { // Увага: імена можуть бут�
     updateWaypointLine(); // Оновлюємо лінію маршруту в кожному кадрі
     updateWaypointHUD();  // Оновлюємо HUD маршруту
     renderer.render(scene, camera);
+   
   }
 
   init();  
