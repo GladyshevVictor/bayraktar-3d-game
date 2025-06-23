@@ -620,7 +620,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
                     let angle = forwardVector.angleTo(directionToTarget);
                     const cross = new THREE.Vector3().crossVectors(forwardVector, directionToTarget);
                     if (cross.y < 0) { angle = -angle; }
-                    const maxSteeringAngle = THREE.MathUtils.degToRad(20);
+                    const maxSteeringAngle = THREE.MathUtils.degToRad(22);
                     targetAngle = THREE.MathUtils.clamp(angle, -maxSteeringAngle, maxSteeringAngle);
                 }
             } else {
@@ -631,7 +631,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
 
         } else {
             // --- РУЧНИЙ РЕЖИМ ---
-           const maxSteeringAngle = THREE.MathUtils.degToRad(15); // <<< Змінено на 15 градусів
+           const maxSteeringAngle = THREE.MathUtils.degToRad(18); // <<< Змінено на 15 градусів
             if (keysPressed['KeyQ'] || keysPressed['й']) {
                 targetAngle = maxSteeringAngle;
             } else if (keysPressed['KeyE'] || keysPressed['у']) {
@@ -648,7 +648,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
        if (gameState.speed > 0.1 && noseGear) { // Починаємо поворот навіть на мінімальній швидкості
         // Постійний коефіцієнт, що визначає, наскільки швидко тіло слідує за стійкою.
         // Можна налаштувати: 0.2 - плавно, 0.8 - різко.
-        const turnFactor = 0.5; 
+        const turnFactor = 0.8; 
         
         const bodyTurnSpeed = noseGear.rotation.y * turnFactor * deltaTime;
         bayraktarModel.rotateY(bodyTurnSpeed);
@@ -663,16 +663,16 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         if (keysPressed['KeyE'] || keysPressed['у']) yawChange = -rotationSpeedInput * yawEffectiveness;
 
         if (noseGear) {
-            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, 0, 0.1);
+            noseGear.rotation.z = THREE.MathUtils.lerp(noseGear.rotation.z, 0, 0.1);
         }
     }
     bayraktarModel.rotateX(pitchChange);
     bayraktarModel.rotateZ(rollChange);
-    bayraktarModel.rotateY(yawChange); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+    //bayraktarModel.rotateY(yawChange); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
     // ▼▼▼ НОВИЙ БЛОК: АКТИВНА СТАБІЛІЗАЦІЯ НА ЗЕМЛІ ▼▼▼
     if (onGround) {
         // Коефіцієнт стабілізації. Чим він більший, тим сильніше літак "пручається" нахилам.
-        const stabilizationFactor = 10; 
+        const stabilizationFactor = 15; 
 
         // Плавно повертаємо крен (вісь Z) до нуля
         bayraktarModel.rotation.z = THREE.MathUtils.lerp(bayraktarModel.rotation.z, 0, stabilizationFactor);
