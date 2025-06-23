@@ -254,7 +254,7 @@ function setupEventListeners() {
         }
 
         // --- Логіка для клавіші Space (Ракета) ---
-        if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
+        if (event.code === 'Space' && gameState.altitude > 10 && bayraktarModel) { 
             console.log("Запуск ракети!");
             if (missileSound) {
                 missileSound.currentTime = 0;
@@ -684,7 +684,7 @@ if (gameState.isTaxiMode && onGround) {
     }
     
     if (gameState.engineOn) { gameState.fuel -= gameState.throttle * 0.01 * deltaTime; gameState.fuel = Math.max(0, gameState.fuel); if (gameState.fuel === 0) { engineSound.pause(); engineSound.currentTime = 0; gameState.engineOn = false; gameState.throttle = 0; console.log("Пальне закінчилося. Двигун вимкнено."); } }
-    gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 6000 + 1500) : 0;
+    gameState.rpm = gameState.engineOn ? Math.floor(gameState.throttle * 4100 + 1500) : 0;
     if (engineSound && gameState.engineOn) { if(engineSound.paused) engineSound.play().catch(e => console.warn("Не вдалося продовжити звук двигуна", e)); engineSound.volume = Math.max(0.1, gameState.throttle * 0.5); }  
     else if (engineSound && !engineSound.paused) { engineSound.pause(); }
     
