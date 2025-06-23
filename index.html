@@ -637,7 +637,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         // --- ЗАГАЛЬНА ЛОГІКА ЗАСТОСУВАННЯ ПОВОРОТУ (для обох режимів) ---
         if (noseGear) {
             const steeringSpeed = 1.0 * deltaTime;
-            noseGear.rotation.z = THREE.MathUtils.lerp(noseGear.rotation.z, targetAngle, steeringSpeed);
+            noseGear.rotation.z = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
         }
 
         if (gameState.speed > 1 && noseGear) {
