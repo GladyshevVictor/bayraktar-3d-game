@@ -620,7 +620,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
                     let angle = forwardVector.angleTo(directionToTarget);
                     const cross = new THREE.Vector3().crossVectors(forwardVector, directionToTarget);
                     if (cross.y < 0) { angle = -angle; }
-                    const maxSteeringAngle = THREE.MathUtils.degToRad(15);
+                    const maxSteeringAngle = THREE.MathUtils.degToRad(20);
                     targetAngle = THREE.MathUtils.clamp(angle, -maxSteeringAngle, maxSteeringAngle);
                 }
             } else {
