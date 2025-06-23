@@ -229,30 +229,27 @@ function setupEventListeners() {
             if (orbitControls) { 
                  orbitControls.enabled = (currentCameraMode === CAMERA_MODES.ORBIT);
             }
-          }
+        }
 
-        // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
         // Миттєва дія: перемикання режиму руління
         if (event.code === 'KeyT') {
-            // Дозволяємо перемикати тільки на землі
             if (gameState.altitude < 1.0) { 
                 gameState.isTaxiMode = !gameState.isTaxiMode;
-                updateTaxiModeHUD(); // Миттєво оновлюємо індикатор
+                updateTaxiModeHUD();
             }
-        // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
+        }
+        
         // Миттєва дія: перемикання автопілота руління
         if (event.code === 'KeyP') {
-            // Дозволяємо перемикати тільки в режимі руління
             if (gameState.isTaxiMode) {
                 gameState.isAutopilotOn = !gameState.isAutopilotOn;
             }
         }
-        // ▲▲▲ КІНЕЦЬ НОВОГО БЛОКУ ▲▲▲
-    };
+    }); // <-- Закриваюча дужка для addEventListener
       
-    // Обробник відпускання клавіш (тут вся логіка старту/ракети)
+    // Обробник відпускання клавіш
     document.addEventListener('keyup', (event) => {
-        const isRKey = event.code === 'KeyR' || event.key.toLowerCase() === 'к';
+    const isRKey = event.code === 'KeyR' || event.key.toLowerCase() === 'к';
 
         // --- Логіка для клавіші R/К ---
         if (isRKey) {
@@ -589,6 +586,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     } else {
         // --- КЕРУВАННЯ В ПОВІТРІ ---
         const yawEffectiveness = 1.0;
+        const rotationSpeedInput = 1.5 * deltaTime; // Поки що використовуємо стару змінну
         if (keysPressed['KeyQ'] || keysPressed['й']) yawChange = rotationSpeedInput * yawEffectiveness;
         if (keysPressed['KeyE'] || keysPressed['у']) yawChange = -rotationSpeedInput * yawEffectiveness;
 
@@ -596,10 +594,10 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
             noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, 0, 0.1);
         }
     }
-
     bayraktarModel.rotateX(pitchChange);
     bayraktarModel.rotateZ(rollChange);
-
+    bayraktarModel.rotateY(yawChange); // <<< ДОДАЙТЕ ЦЕЙ РЯДОК
+   
     let currentPitch = bayraktarModel.rotation.x; let currentRoll = bayraktarModel.rotation.z;
     while (currentPitch > Math.PI) currentPitch -= 2 * Math.PI; while (currentPitch < -Math.PI) currentPitch += 2 * Math.PI;
     while (currentRoll > Math.PI) currentRoll -= 2 * Math.PI; while (currentRoll < -Math.PI) currentRoll += 2 * Math.PI;
