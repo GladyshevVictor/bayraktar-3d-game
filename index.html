@@ -254,7 +254,7 @@ function setupEventListeners() {
         }
 
         // --- Логіка для клавіші Space (Ракета) ---
-        if (event.code === 'Space' && gameState.altitude > 10 && bayraktarModel) { 
+        if (event.code === 'Space' && gameState.altitude > 0.2 && bayraktarModel) { 
             console.log("Запуск ракети!");
             if (missileSound) {
                 missileSound.currentTime = 0;
