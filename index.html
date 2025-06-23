@@ -476,7 +476,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     }
     if (mainWheel) {
         mainWheel.getWorldPosition(wheelWorldPosition);
-        if (wheelWorldPosition.y <= wheelRadius +0.1) {
+        if (wheelWorldPosition.y <= wheelRadius) {
             mainWheel_onGround = true;
         }
     }
