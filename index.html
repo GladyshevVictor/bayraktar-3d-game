@@ -663,9 +663,8 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
             console.log("Автоматичне гальмування в повороті!");
         }
     }
-
     // 4. Зміна горизонтальної швидкості
-    gameState.speed += (actualThrust - drag - currentBrakingForceApplied - frictionForce) * deltaTime;
+    gameState.speed += (actualThrust - drag - currentBrakingForceApplied - frictionForce - autoBrakeForce) * deltaTime;
     gameState.speed = Math.max(0, gameState.speed);
    // ▼▼▼ ДОДАЙТЕ ЦЕЙ ВІДСУТНІЙ БЛОК ▼▼▼
 if (gameState.isTaxiMode && onGround) {
