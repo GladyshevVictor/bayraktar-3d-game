@@ -559,7 +559,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
                 const cross = new THREE.Vector3().crossVectors(forwardVector, directionToTarget);
                 if (cross.y < 0) { angle = -angle; }
                 
-                const maxSteeringAngle = Math.PI / 5;
+                const maxSteeringAngle = Math.PI / 6;
                 targetAngle = THREE.MathUtils.clamp(angle, -maxSteeringAngle, maxSteeringAngle);
             }
 
@@ -582,7 +582,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         if (gameState.speed > 1 && noseGear) {
             const turnFactor = Math.min(gameState.speed / 25, 1.0);
             const bodyTurnSpeed = noseGear.rotation.z * turnFactor * deltaTime;
-            bayraktarModel.rotateZ(bodyTurnSpeed);
+            bayraktarModel.rotateY(bodyTurnSpeed);
         }
         
         yawChange = 0;
