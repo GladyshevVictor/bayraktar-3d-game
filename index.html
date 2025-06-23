@@ -466,7 +466,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
     let mainWheelR_onGround = false;
     let mainWheel_onGround = false; 
 
-    const wheelRadius = 0.4; 
+    const wheelRadius = 0.35; 
     const wheelWorldPosition = new THREE.Vector3();
 
     if (noseGear) { 
@@ -615,7 +615,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         // --- ЗАГАЛЬНА ЛОГІКА ЗАСТОСУВАННЯ ПОВОРОТУ (для обох режимів) ---
         if (noseGear) {
             const steeringSpeed = 1.0 * deltaTime;
-            noseGear.rotation.z = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
+            noseGear.rotation.y = THREE.MathUtils.lerp(noseGear.rotation.y, targetAngle, steeringSpeed);
         }
 
         if (gameState.speed > 1 && noseGear) {
