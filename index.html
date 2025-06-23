@@ -518,14 +518,7 @@ const MAX_TAXI_SPEED_MPS = 8.33; // <<< 1. ДОДАЙТЕ КОНСТАНТУ (30
         updateTaxiModeHUD(); // Оновлюємо HUD
     }
    
-    // ВИЗНАЧЕННЯ ПЕРЕБУВАННЯ НА ЗЕМЛІ (виправлено та переміщено сюди)
-    const onGround = noseGearOnGround || mainWheelL_onGround || mainWheelR_onGround || mainWheel_onGround;
-    // ▼▼▼ ДОДАЙТЕ ЦЕЙ БЛОК ▼▼▼
-    // Автоматично вимикаємо режим руління, якщо літак злетів
-    if (!onGround && gameState.isTaxiMode) {
-        gameState.isTaxiMode = false;
-    }
-    // ▲▲▲ КІНЕЦЬ БЛОКУ ▲▲▲
+   
     // ▼▼▼ РЯДОК ДЛЯ ДІАГНОСТИКИ 1 ▼▼▼
     console.log(`onGround: ${onGround}, vSpeed: ${gameState.vSpeed.toFixed(2)}, altitude: ${gameState.altitude.toFixed(2)}`);
 
